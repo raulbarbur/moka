@@ -68,4 +68,24 @@ class MokaParserTest {
         val resultado = Moka.analizar("hola")
         assertEquals(1, resultado.errores)
     }
+
+    @Test
+    fun FizzBuzzSinErrores(){
+        val resultado = Moka.analizar("// ejemplos/fizzbuzz.moka\n" +
+                "// Imprime los números del 1 al 100; múltiplos de 3 → \"Moka\",\n" +
+                "// múltiplos de 5 → \"Buzz\", de ambos → \"MokaBuzz\".\n" +
+                "para (entero i = 1; i <= 100; i++) {\n" +
+                "si (i % 15 == 0) {\n" +
+                "imprimir(\"MokaBuzz\");\n" +
+                "} sino si (i % 3 == 0) {\n" +
+                "imprimir(\"Moka\");\n" +
+                "} sino si (i % 5 == 0) {\n" +
+                "imprimir(\"Buzz\");\n" +
+                "} sino {\n" +
+                "imprimir(i);\n" +
+                "}\n" +
+                "}")
+        assertEquals(0, resultado.errores);
+    }
+
 }
