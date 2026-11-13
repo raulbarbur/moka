@@ -1,0 +1,31 @@
+# Catalogo de versiones del proyecto Moka (documento de diseno, seccion 6).
+# Regla de oro: Kotlin tiene que estar soportado por antlr-kotlin Y por
+# Compose Multiplatform a la vez. No actualizar ninguna sin probar las otras.
+#
+# Verificado el 13/11/2026 contra Maven Central, el Maven de Google y el
+# repositorio de Strumenta/antlr-kotlin (ver README.md, seccion "Versiones").
+
+[versions]
+kotlin = "2.4.20"        # version con la que se construye y prueba antlr-kotlin 1.0.14
+compose = "1.11.1"       # estable (la 1.12.x exige compileSdk 37, hoy solo beta)
+agp = "9.5.1"            # ultima estable del Android Gradle Plugin
+antlrKotlin = "1.0.14"   # ultima publicada del plugin com.strumenta.antlr-kotlin
+coroutines = "1.11.0"    # ultima estable de kotlinx-coroutines
+activityCompose = "1.10.1"
+compileSdk = "36"
+minSdk = "24"
+targetSdk = "36"
+
+[libraries]
+antlr-kotlin-runtime = { module = "com.strumenta:antlr-kotlin-runtime", version.ref = "antlrKotlin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+
+[plugins]
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+androidLibrary = { id = "com.android.library", version.ref = "agp" }
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "compose" }
+composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+antlrKotlin = { id = "com.strumenta.antlr-kotlin", version.ref = "antlrKotlin" }

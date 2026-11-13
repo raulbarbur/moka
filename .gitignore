@@ -1,0 +1,37 @@
+# ---- Gradle ----
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# ---- Kotlin / Kotlin Multiplatform ----
+.kotlin/
+
+# ---- IntelliJ IDEA / Android Studio ----
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+!.idea/codeStyles/
+!.idea/icon.svg
+
+# ---- Android ----
+local.properties
+.cxx/
+.externalNativeBuild/
+captures/
+
+# ---- Java ----
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+hs_err_pid*
+
+# ---- Sistema operativo ----
+.DS_Store
+Thumbs.db
+
+# ---- Codigo generado por ANTLR ----
+# (vive en build/, no se versiona: se regenera en cada compilacion)
+generatedAntlr/

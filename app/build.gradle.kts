@@ -1,0 +1,61 @@
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
+plugins {
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
+}
+
+kotlin {
+    androidTarget()
+    jvm("desktop")
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.components.resources)
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(project(":core"))
+        }
+        androidMain.dependencies {
+            implementation(compose.preview)
+            implementation(libs.androidx.activity.compose)
+        }
+        val desktopMain by getting
+        desktopMain.dependencies {
+            implementation(compose.desktop.currentOs)
+        }
+    }
+}
+
+android {
+    namespace = "ar.com.moka.app"
+    compileSdk = libs.versions.compileSdk.get().toInt()
+
+    defaultConfig {
+        applicationId = "ar.com.moka.app"
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
+        versionCode = 1
+        versionName = "0.1.0-fase0"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+        }
+    }
+}
+
+compose.desktop {
+    application {
+        mainClass = "ar.com.moka.app.MainKt"
+
+        nativeDistributions {
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+        }
+    }
+}
