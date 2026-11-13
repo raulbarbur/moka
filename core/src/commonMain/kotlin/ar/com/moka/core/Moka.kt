@@ -8,25 +8,29 @@ import org.antlr.v4.kotlinruntime.CommonTokenStream
 /**
  * Fachada del nucleo de Moka.
  *
- * Fase 0: esqueleto minimo. Solo sabe parsear el subconjunto de la gramatica
- * que existe hoy (`Moka.g4`) y devolver un resumen. La API definitiva
- * (Moka.procesar con Flow<EventoPipeline>, seccion 4.7 del documento de
- * diseno) se construye a partir de la Fase 1.
+ * Fase 1: la gramatica ya es la completa (seccion 3 del documento de
+ * diseno), asi que analizar() reconoce programas Moka reales: clases,
+ * funciones y sentencias sueltas. La API definitiva (Moka.procesar con
+ * Flow<EventoPipeline>, seccion 4.7) se construye a partir de la Fase 2,
+ * cuando exista el AST.
  */
 object Moka {
 
-    const val VERSION: String = "0.1.0-fase0"
+    const val VERSION: String = "0.2.0-fase1"
 
     /**
-     * Parsea [fuente] y devuelve cuantas lineas reconocio y cuantos errores
-     * de sintaxis encontro. No ejecuta nada todavia.
+     * Parsea [fuente] y devuelve cuantos elementos toplevel reconocio
+     * (clases + funciones + sentencias sueltas) y cuantos errores de
+     * sintaxis encontro. No ejecuta nada todavia.
      */
     fun analizar(fuente: String): ResultadoParseo {
         val lexer = MokaLexer(CharStreams.fromString(fuente))
         val parser = MokaParser(CommonTokenStream(lexer))
         val arbol = parser.programa()
         return ResultadoParseo(
-            lineas = arbol.linea().size,
+            lineas = arbol.declaracionClase().size +
+                    arbol.declaracionFuncion().size +
+                    arbol.sentencia().size,
             errores = parser.numberOfSyntaxErrors,
         )
     }
@@ -35,9 +39,9 @@ object Moka {
     fun saludo(): String = "Moka $VERSION - nucleo funcionando"
 }
 
-/** Resultado del analisis de la Fase 0. */
+/** Resultado del analisis sintactico. */
 data class ResultadoParseo(val lineas: Int, val errores: Int) {
     override fun toString(): String =
-        if (errores == 0) "Parse OK: $lineas linea(s) reconocida(s)"
-        else "Parse con $errores error(es) de sintaxis ($lineas linea(s) reconocidas)"
+        if (errores == 0) "Parse OK: $lineas elemento(s) toplevel reconocido(s)"
+        else "Parse con $errores error(es) de sintaxis ($lineas elemento(s) toplevel reconocidos)"
 }

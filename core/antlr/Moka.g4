@@ -1,10 +1,8 @@
 // ============================================================================
-// Moka.g4 - Gramatica del lenguaje Moka (documento de diseno, seccion 3)
+// Moka.g4 - Gramatica completa del lenguaje Moka (documento de diseno, sec. 3)
 //
-// Fase 1: lexico completo (todos los tokens nombrados de la seccion 3.2,
-// con sus errores lexicos). El parser sigue siendo el esqueleto de la
-// Fase 0: las reglas sintacticas de verdad (expresiones, declaracion de
-// variables, imprimir) son el siguiente paso, seccion 3.3 del documento.
+// Fase 1: lexico (seccion 3.2) + sintaxis (seccion 3.3). Ya no es el
+// esqueleto de la Fase 0: el parser entiende el lenguaje entero.
 //
 // Convencion (decision cerrada, seccion 3.1): todo literal tiene una regla
 // lexica NOMBRADA y el parser referencia solo nombres de token, nunca
@@ -13,12 +11,159 @@
 grammar Moka;
 
 // =========================== PARSER ===========================
-// Esqueleto de la Fase 0. Sigue compilando con el lexico completo:
-// "hola;" sigue siendo ID PUNTO_COMA. Se reemplaza en la Fase 1.
+// Un programa es una mezcla de clases, funciones y sentencias sueltas.
+// Lo suelto actua como el "main" implicito (seccion 2.2).
 
-programa : linea* EOF ;
+programa
+    : (declaracionClase | declaracionFuncion | sentencia)* EOF
+    ;
 
-linea    : ID PUNTO_COMA ;
+// --- Declaraciones ---
+
+declaracionFuncion
+    : FUNCION tipoRetorno ID PAREN_IZQ parametros? PAREN_DER bloque
+    ;
+
+declaracionClase
+    : CLASE ID LLAVE_IZQ miembroClase* LLAVE_DER
+    ;
+
+// Las etiquetas (# miembroCampo, ...) generan contextos y metodos de
+// visitor separados: visitMiembroCampo, visitMiembroMetodo, etc. Eso hace
+// el constructor del AST mucho mas legible (seccion 3.4 del documento).
+miembroClase
+    : ESTATICO? declaracionVariable                                              # miembroCampo
+    | CONSTRUCTOR PAREN_IZQ parametros? PAREN_DER bloque                         # miembroConstructor
+    | ESTATICO? FUNCION tipoRetorno ID PAREN_IZQ parametros? PAREN_DER bloque    # miembroMetodo
+    ;
+
+parametros : parametro (COMA parametro)* ;
+parametro  : tipo ID ;
+
+declaracionVariable
+    : CONSTANTE? tipo ID (ASIGNA expresion)? PUNTO_COMA
+    ;
+
+// --- Tipos ---
+// tipoBase incluye ID: el nombre de una clase es un tipo (Alumno a = ...).
+
+tipoRetorno : T_VACIO | tipo ;
+tipo        : tipoBase (CORCHETE_IZQ CORCHETE_DER)? ;
+tipoBase    : T_ENTERO | T_FLOTANTE | T_BOOLEANO | T_CARACTER | T_CADENA | ID ;
+
+// --- Sentencias ---
+
+bloque : LLAVE_IZQ sentencia* LLAVE_DER ;
+
+sentencia
+    : bloque
+    | declaracionVariable
+    | sentenciaSi
+    | sentenciaMientras
+    | sentenciaHacer
+    | sentenciaPara
+    | sentenciaParaCada
+    | sentenciaSegun
+    | sentenciaRetornar
+    | sentenciaRomper
+    | sentenciaContinuar
+    | sentenciaExpresion
+    | sentenciaVacia
+    ;
+
+// Dangling else: ante la ambiguedad, ANTLR elige consumir el SINO, o sea
+// lo asocia al SI mas interno. Exactamente la semantica de Java (sec. 3.4).
+sentenciaSi
+    : SI PAREN_IZQ expresion PAREN_DER sentencia (SINO sentencia)?
+    ;
+
+sentenciaMientras
+    : MIENTRAS PAREN_IZQ expresion PAREN_DER sentencia
+    ;
+
+sentenciaHacer
+    : HACER sentencia MIENTRAS PAREN_IZQ expresion PAREN_DER PUNTO_COMA
+    ;
+
+sentenciaPara
+    : PARA PAREN_IZQ inicioPara expresion? PUNTO_COMA expresion? PAREN_DER sentencia
+    ;
+
+// La declaracion de variable ya consume su propio PUNTO_COMA; por eso el
+// inicio del para tiene forma especial y no lleva otro ; explicito.
+inicioPara
+    : declaracionVariable
+    | expresion? PUNTO_COMA
+    ;
+
+sentenciaParaCada
+    : PARA_CADA PAREN_IZQ tipo ID DOS_PUNTOS expresion PAREN_DER sentencia
+    ;
+
+sentenciaSegun
+    : SEGUN PAREN_IZQ expresion PAREN_DER LLAVE_IZQ (ramaCaso | ramaDefecto)* LLAVE_DER
+    ;
+
+ramaCaso    : CASO etiquetaCaso DOS_PUNTOS sentencia* ;
+ramaDefecto : DEFECTO DOS_PUNTOS sentencia* ;
+etiquetaCaso
+    : MENOS? ENTERO_LIT
+    | CARACTER_LIT
+    | CADENA_LIT
+    ;
+
+sentenciaRetornar   : RETORNAR expresion? PUNTO_COMA ;
+sentenciaRomper     : ROMPER PUNTO_COMA ;
+sentenciaContinuar  : CONTINUAR PUNTO_COMA ;
+sentenciaExpresion  : expresion PUNTO_COMA ;
+sentenciaVacia      : PUNTO_COMA ;
+
+// --- Expresiones ---
+// Regla recursiva a izquierda: ANTLR la reescribe solo y lee la precedencia
+// del ORDEN de las alternativas (mas abajo = MENOS precedencia). O sea:
+// la asignacion es lo ultimo que se resuelve y el postfijo lo primero.
+// Cada etiqueta genera su visitXxx en el visitor (accesoIndice, llamada...).
+
+expresion
+    : primario                                                       # primarioExpr
+    | expresion PUNTO ID                                             # accesoMiembro
+    | expresion CORCHETE_IZQ expresion CORCHETE_DER                  # accesoIndice
+    | expresion PAREN_IZQ argumentos? PAREN_DER                      # llamada
+    | expresion op=(INCREMENTO | DECREMENTO)                         # postfijo
+    | op=(INCREMENTO | DECREMENTO | MENOS | NO) expresion            # unario
+    | expresion op=(POR | DIV | MODULO) expresion                    # multiplicativa
+    | expresion op=(MAS | MENOS) expresion                           # aditiva
+    | expresion op=(MENOR | MENOR_IGUAL | MAYOR | MAYOR_IGUAL) expresion   # relacional
+    | expresion op=(IGUAL_IGUAL | DISTINTO) expresion                # igualdad
+    | expresion Y expresion                                          # conjuncion
+    | expresion O expresion                                          # disyuncion
+    | <assoc=right> expresion
+        op=(ASIGNA | MAS_ASIGNA | MENOS_ASIGNA | POR_ASIGNA | DIV_ASIGNA | MOD_ASIGNA)
+        expresion                                                    # asignacion
+    ;
+
+argumentos : expresion (COMA expresion)* ;
+
+primario
+    : ENTERO_LIT                                                     # litEntero
+    | FLOTANTE_LIT                                                   # litFlotante
+    | CARACTER_LIT                                                   # litCaracter
+    | CADENA_LIT                                                     # litCadena
+    | VERDADERO                                                      # litVerdadero
+    | FALSO                                                          # litFalso
+    | NULO                                                           # litNulo
+    | ESTE                                                           # refEste
+    | ID                                                             # refNombre
+    | PAREN_IZQ expresion PAREN_DER                                  # parentesis
+    | NUEVO ID PAREN_IZQ argumentos? PAREN_DER                       # nuevoObjeto
+    | NUEVO tipoBase CORCHETE_IZQ expresion CORCHETE_DER             # nuevoArreglo
+    | CORCHETE_IZQ expresion (COMA expresion)* CORCHETE_DER          # litArreglo
+    ;
+
+// Detalle de diseno: la gramatica acepta cualquier expresion a la izquierda
+// de "=" (hola + 2 = 3). Que sea un l-valor valido se verifica en el
+// analisis SEMANTICO, donde el mensaje de error en espanol es mucho mejor
+// que el generico del parser (seccion 3.4 del documento).
 
 // ============================ LEXER ============================
 
