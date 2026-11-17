@@ -79,6 +79,11 @@ class GeneradorTac private constructor(private val sem: ResultadoSemantico) {
     // idUnico de campo estatico -> "Clase.campo" (sec. 4.5.3).
     private val estaticos = mutableMapOf<String, String>()
 
+    // Nombre de unidad -> idUnicos de sus parametros EN ORDEN (este
+    // primero en metodos y constructor). La MaquinaTac los liga con los
+    // argumentos apilados por `param` al ejecutar `llamar` (sec. 4.6).
+    private val parametrosPorFuncion = mutableMapOf<String, List<String>>()
+
     // --------------------------- orquestacion -------------------------------
 
     private fun ejecutar(programa: ProgramaAst): ProgramaTac {
@@ -90,7 +95,7 @@ class GeneradorTac private constructor(private val sem: ResultadoSemantico) {
             when (d) {
                 is DeclFuncion -> {
                     val retorno = sem.raiz.funciones[d.nombre]?.tipo
-                    unidad(d.nombre, d.params.size, d.pos, retorno) {
+                    unidad(d.nombre, d.params.size, d.pos, retorno, idsDeParams(d.params)) {
                         for (s in d.cuerpo.sentencias) genSentencia(s)
                     }
                 }
@@ -99,7 +104,7 @@ class GeneradorTac private constructor(private val sem: ResultadoSemantico) {
             }
         }
 
-        unidad("__principal", 0, programa.pos, null) {
+        unidad("__principal", 0, programa.pos, null, emptyList()) {
             genInicializadoresEstaticos(programa)
             for (d in programa.declaraciones) {
                 if (d is Sent) genSentencia(d)
@@ -109,13 +114,14 @@ class GeneradorTac private constructor(private val sem: ResultadoSemantico) {
         // Renumeracion final: el cortocircuito injerta buffers en el
         // medio de la lista, asi que los indices se fijan aca, al cerrar.
         val numeradas = cuadruplas.mapIndexed { i, c -> c.copy(indice = i) }
-        return ProgramaTac(numeradas, estaticos)
+        return ProgramaTac(numeradas, estaticos, parametrosPorFuncion, sem.raiz.clases)
     }
 
     // Una unidad inicio_func ... fin_func: funcion, metodo, constructor o
     // __principal. Los temporales se reinician: son del marco (sec. 4.5.1).
-    private fun unidad(nombre: String, nroParametros: Int, pos: Posicion, retorno: Tipo?, cuerpo: () -> Unit) {
+    private fun unidad(nombre: String, nroParametros: Int, pos: Posicion, retorno: Tipo?, paramIds: List<String>, cuerpo: () -> Unit) {
         contadorTemporal = 0
+        parametrosPorFuncion[nombre] = paramIds
         val retornoPrevio = retornoActual
         retornoActual = retorno
         emit(Operacion.INICIO_FUNC, Operando.Nombre(nombre), constante(nroParametros), null, pos)
@@ -140,14 +146,20 @@ class GeneradorTac private constructor(private val sem: ResultadoSemantico) {
             // es el vacio implicito (sec. 2.10) y al menos corre los
             // inicializadores de campos de instancia.
             val ctor = d.constructor
-            unidad("${clase.nombre}.constructor", (ctor?.params?.size ?: 0) + 1, ctor?.pos ?: d.pos, TVacio) {
+            unidad(
+                "${clase.nombre}.constructor", (ctor?.params?.size ?: 0) + 1, ctor?.pos ?: d.pos, TVacio,
+                listOf("este") + idsDeParams(ctor?.params ?: emptyList())
+            ) {
                 genInicializadoresDeInstancia(d, clase)
                 if (ctor != null) for (s in ctor.cuerpo.sentencias) genSentencia(s)
             }
             for (metodo in d.metodos) {
                 val sim = clase.metodos[metodo.nombre]
                 val nro = metodo.params.size + if (metodo.esEstatico) 0 else 1
-                unidad("${clase.nombre}.${metodo.nombre}", nro, metodo.pos, sim?.tipo) {
+                unidad(
+                    "${clase.nombre}.${metodo.nombre}", nro, metodo.pos, sim?.tipo,
+                    (if (metodo.esEstatico) emptyList() else listOf("este")) + idsDeParams(metodo.params)
+                ) {
                     for (s in metodo.cuerpo.sentencias) genSentencia(s)
                 }
             }
@@ -188,6 +200,11 @@ class GeneradorTac private constructor(private val sem: ResultadoSemantico) {
             }
         }
     }
+
+    // Los idUnicos de los parametros, en orden. El semantico los registro
+    // en la tabla simbolos al abrir el ambito de la funcion (sec. 4.4).
+    private fun idsDeParams(params: List<Param>): List<String> =
+        params.map { (sem.simbolos[it.id] as? SimboloVariable)?.idUnico ?: it.nombre }
 
     private fun precomputarEstaticos() {
         for ((_, clase) in sem.raiz.clases) {

@@ -9,6 +9,10 @@
 //
 //   funciones:  nombre -> indice de su inicio_func  ("factorial" -> 0)
 //   etiquetas:  nombre -> indice de la cuadrupla etiqueta ("L1" -> 4)
+//   parametros: nombre -> idUnicos de los parametros EN ORDEN (con "este"
+//               primero en metodos y constructores): es lo que `llamar`
+//               liga al apilar un marco
+//   clases:     nombre -> SimboloClase (para nuevo_objeto y a_cadena)
 //
 // Ademas `estaticos` guarda el nombre de ALMACEN de cada campo estatico:
 // el simbolo de `total` en `clase Contador { estatico entero total; }`
@@ -24,9 +28,13 @@
 
 package ar.com.moka.core.tac
 
+import ar.com.moka.core.semantico.SimboloClase
+
 class ProgramaTac(
     val cuadruplas: List<Cuadrupla>,
-    val estaticos: Map<String, String>
+    val estaticos: Map<String, String>,
+    val parametros: Map<String, List<String>>,
+    val clases: Map<String, SimboloClase>
 ) {
 
     // Tabla nombre de funcion -> indice de su inicio_func (sec. 4.6).

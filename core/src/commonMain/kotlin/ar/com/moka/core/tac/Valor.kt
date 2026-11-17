@@ -31,6 +31,9 @@ sealed interface Valor {
     data class VCaracter(val v: Char) : Valor
     data class VCadena(val v: String) : Valor
     object VNulo : Valor
-    class VArreglo(val tipoElemento: Tipo, val datos: Array<Valor>) : Valor
-    class VObjeto(val clase: SimboloClase, val campos: MutableMap<String, Valor>) : Valor
+    // El `id` de heap lo asigna la MaquinaTac al crearlos: es el que se
+    // muestra en "Alumno@3" cuando un objeto se imprime sin a_cadena()
+    // propio (sec. 2.6). Default 0 para no romper nada de la Fase 4.
+    class VArreglo(val tipoElemento: Tipo, val datos: Array<Valor>, val id: Int = 0) : Valor
+    class VObjeto(val clase: SimboloClase, val campos: MutableMap<String, Valor>, val id: Int = 0) : Valor
 }
