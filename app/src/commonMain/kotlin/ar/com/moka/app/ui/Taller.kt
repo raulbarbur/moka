@@ -1,10 +1,9 @@
 // =======================================================================
 //  Taller.kt — La pantalla principal (sec. 5.2)
 // =======================================================================
-//  Version 7.4: el placeholder de la derecha se reemplaza por
-//  PanelesTaller, el contenedor con pestañas de los paneles de fase
-//  (Tokens ya funciona; las demas pestañas avisan en que paso llegan).
-//  El editor ademas recibe la seleccion compartida para resaltarla.
+//  Version 7.7: PanelesTaller recibe el estado completo (los cinco
+//  paneles ya existen) y el editor la seleccion compartida para
+//  resaltarla.
 //
 //  Este composable NO tiene logica: observa el StateFlow del controlador
 //  y le reparte a cada parte su pedazo de estado (sec. 5.1: una sola
@@ -65,8 +64,7 @@ fun Taller(controlador: MokaControlador) {
                 modifier = Modifier.weight(1f).fillMaxHeight().padding(start = 12.dp, bottom = 8.dp)
             )
             PanelesTaller(
-                fases = estado.fases,
-                seleccion = estado.seleccion,
+                estado = estado,
                 onSeleccionar = controlador::seleccionar,
                 modifier = Modifier.weight(1f).fillMaxHeight()
                     .padding(start = 8.dp, end = 12.dp, bottom = 8.dp)

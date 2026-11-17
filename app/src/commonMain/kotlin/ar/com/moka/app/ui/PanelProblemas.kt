@@ -4,12 +4,15 @@
 //  Junta los diagnosticos de TODAS las fases (cada uno ya vive en el slot
 //  de su fase; aca solo se aplanan, no se recalcula nada) y los deja
 //  filtrar por fase y por severidad. Tocar uno avisa la posicion al
-//  controlador (seleccion): hoy el editor ya muestra el subrayado de ese
-//  rango; en 7.4+ el toque ademas abre el panel de la fase.
+//  controlador (seleccion): el editor subraya ese rango y los paneles de
+//  fase resaltan su elemento.
 //
 //  Nota: Diagnostico todavia no lleva su fase adentro (quedo pendiente
 //  desde la Fase 3), asi que el filtro por fase se hace preguntandole a
 //  cada slot del mapa, no al diagnostico.
+//
+//  La fila (FilaDiagnostico) es compartida: la usa tambien la sub-pestaña
+//  Errores del panel semantico.
 // =======================================================================
 package ar.com.moka.app.ui
 
@@ -115,17 +118,18 @@ fun PanelProblemas(
             }
             LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
                 items(visibles) { diagnostico ->
-                    FilaProblema(diagnostico, onSeleccionar)
+                    FilaDiagnostico(diagnostico, onSeleccionar)
                 }
             }
         }
     }
 }
 
-// Una fila: codigo coloreado por severidad, posicion (linea:columna) y el
-// mensaje en espanol. Tocarla selecciona el rango en el editor.
+// Una fila de diagnostico: codigo coloreado por severidad, posicion
+// (linea:columna) y el mensaje en espanol. Tocarla selecciona el rango
+// en el editor. Compartida con el panel semantico.
 @Composable
-private fun FilaProblema(diagnostico: Diagnostico, onSeleccionar: (Posicion) -> Unit) {
+fun FilaDiagnostico(diagnostico: Diagnostico, onSeleccionar: (Posicion) -> Unit) {
     val color = if (diagnostico.severidad == Severidad.ERROR) {
         MaterialTheme.colorScheme.error
     } else {
