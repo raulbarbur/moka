@@ -1,7 +1,7 @@
 // =======================================================================
 //  Taller.kt - La pantalla principal (sec. 5.2)
 // =======================================================================
-//  Version 7.9: ArchivoTaller agrega archivos, ejemplos y atajos.
+//  Version 7.10: suma los controles de avance de BarraDepuracion.
 //  El contenido del Taller conserva el resaltado de sintaxis de 7.8.
 //
 //  Este composable NO tiene logica: observa el StateFlow del controlador
@@ -52,6 +52,8 @@ fun Taller(controlador: MokaControlador) {
                 Spacer(Modifier.width(8.dp))
                 Button(onClick = controlador::detener) { Text("Detener") }
             }
+
+            BarraDepuracion(controlador)
 
             // ---- barra de fases: la foto del pipeline en cada momento ----
             BarraFases(estado.fases)

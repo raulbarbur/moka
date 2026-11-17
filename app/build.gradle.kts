@@ -30,6 +30,8 @@ kotlin {
         val desktopMain by getting
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
+            // Dispatchers.Main del controlador se apoya en el EDT de Swing.
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:${libs.versions.coroutines.get()}")
         }
     }
 }
