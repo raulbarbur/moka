@@ -16,6 +16,11 @@ import ar.com.moka.core.lexico.Token
 import ar.com.moka.core.pipeline.Artefacto
 import ar.com.moka.core.pipeline.EventoPipeline
 import ar.com.moka.core.pipeline.Fase
+import ar.com.moka.core.pipeline.ResultadoAnalisis
+import ar.com.moka.core.semantico.Ambito
+import ar.com.moka.core.semantico.TipoAmbito
+import ar.com.moka.core.sintactico.NodoArbol
+import ar.com.moka.core.tac.ProgramaTac
 import ar.com.moka.core.semantico.Diagnostico
 import ar.com.moka.core.semantico.Severidad
 import ar.com.moka.core.tac.Cuadrupla
@@ -176,5 +181,78 @@ class EstadoWorkbenchTest {
         assertTrue(estado.salida.isEmpty())
         assertNull(estado.pasoActual)
         assertEquals(1, estado.diagnosticos.size)
+    }
+
+    // ------------------------- analisis en vivo -------------------------
+
+    private fun resultadoSinErrores() = ResultadoAnalisis(
+        lexico = Artefacto.Lexico(listOf(token())),
+        sintactico = Artefacto.Sintactico(NodoArbol("programa", esHoja = false), ast = null),
+        semantico = Artefacto.Semantico(Ambito(TipoAmbito.GLOBAL, "global", null, null), emptyMap(), emptyList()),
+        tac = Artefacto.Tac(ProgramaTac(emptyList(), emptyMap(), emptyMap(), emptyMap())),
+        diagnosticos = emptyList(),
+        omitidas = emptyMap()
+    )
+
+    @Test
+    fun analisisEnVivoCompletoMarcaLasCuatroFases() {
+        val estado = EstadoWorkbench.vacio().conAnalisisEnVivo(resultadoSinErrores())
+        for (fase in listOf(Fase.LEXICA, Fase.SINTACTICA, Fase.SEMANTICA, Fase.GENERACION_TAC)) {
+            assertEquals(EstadoFase.COMPLETADA, estado.fases.getValue(fase).estado, fase.name)
+        }
+        assertEquals(EstadoFase.PENDIENTE, estado.fases.getValue(Fase.EJECUCION).estado)
+    }
+
+    @Test
+    fun analisisEnVivoConErrorLexicoOmiteElResto() {
+        // Error en la fase 1: solo el lexico corre; las otras se omiten
+        // con su motivo y no traen diagnosticos (en el flujo real una
+        // fase omitida nunca produjo nada).
+        val r = ResultadoAnalisis(
+            lexico = Artefacto.Lexico(listOf(token())),
+            sintactico = null,
+            semantico = null,
+            tac = null,
+            diagnosticos = listOf(Diagnostico(Severidad.ERROR, "LEX-001", "caracter no reconocido", pos)),
+            omitidas = mapOf(Fase.SINTACTICA to "la fase lexica termino con errores")
+        )
+        val estado = EstadoWorkbench.vacio().conAnalisisEnVivo(r)
+        assertEquals(EstadoFase.CON_ERRORES, estado.fases.getValue(Fase.LEXICA).estado)
+        assertEquals(1, estado.fases.getValue(Fase.LEXICA).diagnosticos.size)
+        assertEquals(EstadoFase.OMITIDA, estado.fases.getValue(Fase.SINTACTICA).estado)
+        assertEquals("la fase lexica termino con errores", estado.fases.getValue(Fase.SINTACTICA).motivoOmision)
+        assertEquals(1, estado.diagnosticos.size)
+    }
+
+    @Test
+    fun analisisEnVivoReparteDiagnosticosPorPrefijo() {
+        // Todo corre y hay una advertencia semantica: cae en el slot de
+        // SEMANTICA (prefijo SEM-), que queda COMPLETADA igual.
+        val r = resultadoSinErrores().let {
+            ResultadoAnalisis(
+                lexico = it.lexico, sintactico = it.sintactico, semantico = it.semantico, tac = it.tac,
+                diagnosticos = listOf(Diagnostico(Severidad.ADVERTENCIA, "SEM-018", "variable nunca usada", pos)),
+                omitidas = emptyMap()
+            )
+        }
+        val estado = EstadoWorkbench.vacio().conAnalisisEnVivo(r)
+        assertEquals(EstadoFase.COMPLETADA, estado.fases.getValue(Fase.SEMANTICA).estado)
+        assertEquals(1, estado.fases.getValue(Fase.SEMANTICA).diagnosticos.size)
+        assertEquals(0, estado.fases.getValue(Fase.LEXICA).diagnosticos.size)
+        assertEquals(1, estado.diagnosticos.size)
+    }
+
+    @Test
+    fun analisisEnVivoLimpiaEjecucionPeroConservaLaSalida() {
+        val corrido = EstadoWorkbench.vacio()
+            .reducir(EventoPipeline.FaseIniciada(Fase.EJECUCION))
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.Salida("Hola\n")))
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.Fin(10)))
+            .reducir(EventoPipeline.Terminado(exito = true))
+        val vivo = corrido.conAnalisisEnVivo(resultadoSinErrores())
+        assertEquals(EstadoFase.PENDIENTE, vivo.fases.getValue(Fase.EJECUCION).estado)
+        assertNull(vivo.pasoActual)
+        assertFalse(vivo.terminado)
+        assertEquals(1, vivo.salida.size) // la consola conserva la historia
     }
 }

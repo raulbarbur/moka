@@ -1,9 +1,8 @@
 // =======================================================================
 //  Taller.kt — La pantalla principal (sec. 5.2)
 // =======================================================================
-//  Version 7.7: PanelesTaller recibe el estado completo (los cinco
-//  paneles ya existen) y el editor la seleccion compartida para
-//  resaltarla.
+//  Version 7.8: el editor ademas recibe los tokens del analisis lexico
+//  (en vivo) para el resaltado de sintaxis.
 //
 //  Este composable NO tiene logica: observa el StateFlow del controlador
 //  y le reparte a cada parte su pedazo de estado (sec. 5.1: una sola
@@ -31,6 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ar.com.moka.app.estado.MokaControlador
+import ar.com.moka.core.pipeline.Artefacto
+import ar.com.moka.core.pipeline.Fase
 
 @Composable
 fun Taller(controlador: MokaControlador) {
@@ -58,6 +59,7 @@ fun Taller(controlador: MokaControlador) {
         Row(Modifier.fillMaxWidth().weight(1f).padding(top = 8.dp)) {
             EditorTaller(
                 fuente = estado.fuente,
+                tokens = (estado.fases.getValue(Fase.LEXICA).artefacto as? Artefacto.Lexico)?.tokens,
                 diagnosticos = estado.diagnosticos,
                 seleccion = estado.seleccion,
                 onCambio = controlador::cambiarFuente,

@@ -1,20 +1,22 @@
 // =======================================================================
 //  EditorTaller.kt — El editor de codigo fuente (sec. 5.3, panel 1)
 // =======================================================================
-//  Version 7.4: ademas del subrayado de diagnosticos (7.3), resalta con
-//  fondo el rango de la SELECCION compartida (sec. 5.1): tocar un token
-//  en el panel, un problema en la lista o un nodo del arbol (7.5) pinta
-//  su fragmento aca.
+//  Version 7.8: suma el RESALTADO DE SINTAXIS por categoria de token
+//  (palabras clave, literales, delimitadores, errores) usando los tokens
+//  del analisis lexico en vivo. Capas de pintado, de abajo hacia arriba:
+//    1. color de sintaxis por token
+//    2. fondo de la seleccion compartida
+//    3. subrayado de diagnosticos (gana sobre el color del token)
 //
-//  Todo se pinta con una VisualTransformation: el texto no cambia
-//  (OffsetMapping.Identity), solo se le superponen estilos, asi que
-//  cursor y scroll no se alteran.
+//  Todo con una VisualTransformation: el texto no cambia
+//  (OffsetMapping.Identity), solo se le superponen estilos.
 //
-//  Aproximacion declarada en 7.3: el subrayado es simple, no ondulado
-//  (Compose no trae decoracion ondulada lista).
+//  Detalle honesto: entre tecla y analisis hay 400 ms en que los tokens
+//  son del texto ANTERIOR; los rangos fuera de rango se descartan y los
+//  corridos pueden pintar un caracter corrido por un instante. Se
+//  corrige solo cuando llega el analisis nuevo.
 //
-//  Siguen pendientes con paso propio: resaltado de sintaxis (7.8) y
-//  abrir/guardar (7.9).
+//  Pendiente con paso propio: abrir/guardar (7.9).
 // =======================================================================
 package ar.com.moka.app.ui
 
@@ -41,6 +43,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ar.com.moka.core.ast.Posicion
+import ar.com.moka.core.lexico.CategoriaToken
+import ar.com.moka.core.lexico.Token
 import ar.com.moka.core.semantico.Diagnostico
 import ar.com.moka.core.semantico.Severidad
 
@@ -51,16 +55,26 @@ private val COLOR_ADVERTENCIA = Color(0xFFB8860B)
 @Composable
 fun EditorTaller(
     fuente: String,
+    tokens: List<Token>?,
     diagnosticos: List<Diagnostico>,
     seleccion: Posicion?,
     onCambio: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val colorError = MaterialTheme.colorScheme.error
-    val colorSeleccion = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-    // Se recalcula solo cuando cambia el texto, la lista o la seleccion.
-    val transformacion = remember(fuente, diagnosticos, seleccion, colorError) {
-        SubrayadoDiagnosticos(diagnosticos, seleccion, colorError, COLOR_ADVERTENCIA, colorSeleccion)
+    val esquema = MaterialTheme.colorScheme
+    val coloresSintaxis = remember(esquema) {
+        mapOf(
+            CategoriaToken.PALABRA_CLAVE to esquema.primary,
+            CategoriaToken.LITERAL to esquema.tertiary,
+            CategoriaToken.DELIMITADOR to esquema.outline,
+            CategoriaToken.ERROR to esquema.error
+        )
+    }
+    val colorError = esquema.error
+    val colorSeleccion = esquema.primary.copy(alpha = 0.25f)
+    // Se recalcula solo cuando cambia alguna de sus entradas.
+    val transformacion = remember(fuente, tokens, diagnosticos, seleccion, coloresSintaxis) {
+        PintadoEditor(fuente, tokens.orEmpty(), diagnosticos, seleccion, coloresSintaxis, colorError, colorSeleccion)
     }
     Surface(modifier = modifier, shape = RoundedCornerShape(8.dp), tonalElevation = 1.dp) {
         Column {
@@ -84,26 +98,35 @@ fun EditorTaller(
     }
 }
 
-// Pinta: 1) fondo tenue sobre el rango seleccionado, 2) subrayado de
-// color sobre el rango de cada diagnostico. Las posiciones son las del
-// nucleo: linea 1-based, columna 0-based, fin inclusivo; aca se
-// convierten a desplazamientos de caracter.
-private class SubrayadoDiagnosticos(
+// Pinta sintaxis + seleccion + subrayado de diagnosticos. Las posiciones
+// son las del nucleo: linea 1-based, columna 0-based, fin inclusivo; aca
+// se convierten a desplazamientos de caracter.
+private class PintadoEditor(
+    private val fuente: String,
+    private val tokens: List<Token>,
     private val diagnosticos: List<Diagnostico>,
     private val seleccion: Posicion?,
+    private val coloresSintaxis: Map<CategoriaToken, Color>,
     private val colorError: Color,
-    private val colorAdvertencia: Color,
     private val colorSeleccion: Color
 ) : VisualTransformation {
 
     override fun filter(text: AnnotatedString): TransformedText {
-        if (diagnosticos.isEmpty() && seleccion == null) {
+        if (tokens.isEmpty() && diagnosticos.isEmpty() && seleccion == null) {
             return TransformedText(text, OffsetMapping.Identity)
         }
-        val fuente = text.text
         val inicios = iniciosDeLinea(fuente)
         val constructor = AnnotatedString.Builder(text)
 
+        // 1. sintaxis: solo las categorias con color propio (operadores e
+        //    identificadores quedan con el color normal del texto).
+        for (token in tokens) {
+            val color = coloresSintaxis[token.categoria] ?: continue
+            val rango = rangoDe(inicios, fuente.length, token.pos) ?: continue
+            constructor.addStyle(SpanStyle(color = color), rango.first, rango.second)
+        }
+
+        // 2. seleccion compartida (fondo).
         val sel = seleccion
         if (sel != null) {
             val rango = rangoDe(inicios, fuente.length, sel)
@@ -112,11 +135,12 @@ private class SubrayadoDiagnosticos(
             }
         }
 
+        // 3. diagnosticos (subrayado; su color gana sobre el del token).
         for (d in diagnosticos) {
             val rango = rangoDe(inicios, fuente.length, d.pos) ?: continue
             constructor.addStyle(
                 SpanStyle(
-                    color = if (d.severidad == Severidad.ERROR) colorError else colorAdvertencia,
+                    color = if (d.severidad == Severidad.ERROR) colorError else COLOR_ADVERTENCIA,
                     textDecoration = TextDecoration.Underline
                 ),
                 rango.first, rango.second
