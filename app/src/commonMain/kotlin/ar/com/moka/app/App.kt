@@ -1,32 +1,35 @@
+// =======================================================================
+//  App.kt — Raiz de la UI (reemplaza la pantalla demo de la Fase 0)
+// =======================================================================
+//  Crea el controlador UNA vez por pantalla (remember), lo libera cuando
+//  la pantalla se destruye (DisposableEffect) y monta el Taller. Nada
+//  mas: la UI de verdad vive en ui/ y la logica de estado en estado/.
+//
+//  A partir de aca la app ya no usa el object Moka de la Fase 0
+//  (ar.com.moka.core.Moka): habla con el nucleo solo por la fachada
+//  pipeline.Moka, a traves del controlador.
+// =======================================================================
 package ar.com.moka.app
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import ar.com.moka.core.Moka
+import ar.com.moka.app.estado.MokaControlador
+import ar.com.moka.app.ui.Taller
 
-/**
- * Pantalla unica de la Fase 0: un "hola" compartido entre escritorio y
- * Android que demuestra que la UI llama al nucleo (core) y parsea con el.
- */
 @Composable
 fun App() {
+    val controlador = remember { MokaControlador() }
+    DisposableEffect(Unit) {
+        onDispose { controlador.liberar() }
+    }
     MaterialTheme {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text("Moka - Taller", style = MaterialTheme.typography.headlineMedium)
-            Text(Moka.saludo())
-            Text(Moka.analizar("hola;\nmundo;").toString())
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Taller(controlador)
         }
     }
 }
