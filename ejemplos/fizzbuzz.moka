@@ -1,0 +1,15 @@
+para (entero i = 1; i <= 100; i = i + 1) {
+    si (i % 15 == 0) {
+        imprimir("FizzBuzz");
+    } sino {
+        si (i % 3 == 0) {
+            imprimir("Fizz");
+        } sino {
+            si (i % 5 == 0) {
+                imprimir("Buzz");
+            } sino {
+                imprimir(i);
+            }
+        }
+    }
+}
