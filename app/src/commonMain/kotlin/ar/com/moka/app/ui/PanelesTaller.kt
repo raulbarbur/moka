@@ -4,8 +4,8 @@
 //  El lado derecho del Taller (sec. 5.2): pestañas Tokens | Arbol |
 //  Semantica | TAC | Ejecucion, cada una alimentada por el artefacto de
 //  su fase (sec. 5.1: paneles sin estado, reciben solo su artefacto).
-//  Las pestañas cuyo panel todavia no existe muestran un aviso con el
-//  paso en que llegan; la estructura de pestañas ya queda.
+//  Ya existen Tokens (7.4) y Arbol (7.5); las demas pestañas avisan en
+//  que paso llegan.
 // =======================================================================
 package ar.com.moka.app.ui
 
@@ -33,7 +33,7 @@ import ar.com.moka.core.ast.Posicion
 import ar.com.moka.core.pipeline.Artefacto
 import ar.com.moka.core.pipeline.Fase
 
-// Pestaña -> paso en que llega su panel (Tokens ya existe: es esta fase).
+// Pestaña -> paso en que llega su panel (Tokens y Arbol ya existen).
 private val PESTANAS = listOf("Tokens", "Arbol", "Semantica", "TAC", "Ejecucion")
 private val PASO_DE_PESTANA = listOf("7.4", "7.5", "7.6", "7.7", "7.7")
 
@@ -64,6 +64,12 @@ fun PanelesTaller(
             when (pestana) {
                 0 -> PanelTokens(
                     lexico = fases.getValue(Fase.LEXICA).artefacto as? Artefacto.Lexico,
+                    seleccion = seleccion,
+                    onSeleccionar = onSeleccionar,
+                    modifier = Modifier.fillMaxSize()
+                )
+                1 -> PanelArbol(
+                    sintactico = fases.getValue(Fase.SINTACTICA).artefacto as? Artefacto.Sintactico,
                     seleccion = seleccion,
                     onSeleccionar = onSeleccionar,
                     modifier = Modifier.fillMaxSize()
