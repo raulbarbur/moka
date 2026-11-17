@@ -1,10 +1,10 @@
 // =======================================================================
 //  Taller.kt — La pantalla principal (sec. 5.2)
 // =======================================================================
-//  Esqueleto de la version 7.2: barra superior con Ejecutar / Paso a
-//  paso / Detener, la barra de fases (un chip por fase del pipeline), el
-//  editor de codigo a la izquierda, el hueco de los paneles a la derecha
-//  (los paneles de verdad llegan en 7.4 a 7.7) y la consola abajo.
+//  Version 7.4: el placeholder de la derecha se reemplaza por
+//  PanelesTaller, el contenedor con pestañas de los paneles de fase
+//  (Tokens ya funciona; las demas pestañas avisan en que paso llegan).
+//  El editor ademas recibe la seleccion compartida para resaltarla.
 //
 //  Este composable NO tiene logica: observa el StateFlow del controlador
 //  y le reparte a cada parte su pedazo de estado (sec. 5.1: una sola
@@ -13,8 +13,6 @@
 // =======================================================================
 package ar.com.moka.app.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,10 +22,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -59,43 +55,40 @@ fun Taller(controlador: MokaControlador) {
         // ---- barra de fases: la foto del pipeline en cada momento ----
         BarraFases(estado.fases)
 
-        // ---- mitad de arriba: editor | paneles ----
+        // ---- mitad de arriba: editor | paneles de fase ----
         Row(Modifier.fillMaxWidth().weight(1f).padding(top = 8.dp)) {
             EditorTaller(
                 fuente = estado.fuente,
+                diagnosticos = estado.diagnosticos,
+                seleccion = estado.seleccion,
                 onCambio = controlador::cambiarFuente,
                 modifier = Modifier.weight(1f).fillMaxHeight().padding(start = 12.dp, bottom = 8.dp)
             )
-            PanelLateralPlaceholder(
-                Modifier.weight(1f).fillMaxHeight().padding(start = 8.dp, end = 12.dp, bottom = 8.dp)
+            PanelesTaller(
+                fases = estado.fases,
+                seleccion = estado.seleccion,
+                onSeleccionar = controlador::seleccionar,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+                    .padding(start = 8.dp, end = 12.dp, bottom = 8.dp)
             )
         }
 
-        // ---- consola abajo ----
-        ConsolaTaller(
-            salida = estado.salida,
-            pidiendoEntrada = estado.pidiendoEntrada,
-            terminado = estado.terminado,
-            exito = estado.exito,
-            onEnviar = controlador::enviarEntrada,
-            modifier = Modifier.fillMaxWidth().height(200.dp)
-        )
-    }
-}
-
-// Hueco del lado derecho mientras no existen los paneles. Desaparece en
-// 7.4, cuando el primer panel ocupe este lugar.
-@Composable
-private fun PanelLateralPlaceholder(modifier: Modifier) {
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-            Text(
-                "Paneles de fases (tokens, arbol, semantica, TAC):\nllegan en los pasos 7.4 a 7.7.",
-                style = MaterialTheme.typography.bodyMedium
+        // ---- franja inferior: problemas | consola (sec. 5.2) ----
+        Row(Modifier.fillMaxWidth().height(220.dp)) {
+            PanelProblemas(
+                fases = estado.fases,
+                onSeleccionar = controlador::seleccionar,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+                    .padding(start = 12.dp, end = 4.dp, bottom = 8.dp)
+            )
+            ConsolaTaller(
+                salida = estado.salida,
+                pidiendoEntrada = estado.pidiendoEntrada,
+                terminado = estado.terminado,
+                exito = estado.exito,
+                onEnviar = controlador::enviarEntrada,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+                    .padding(start = 4.dp, end = 12.dp, bottom = 8.dp)
             )
         }
     }
