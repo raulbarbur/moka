@@ -22,5 +22,10 @@ expect fun recordarGestorArchivosMoka(): GestorArchivosMoka
 
 fun nombreMoka(nombre: String): String {
     val limpio = nombre.trim().ifEmpty { "sin-titulo.moka" }
-    return if (limpio.endsWith(".moka", ignoreCase = true)) limpio else "$limpio.moka"
+    // Un .txt abierto se guarda como .moka SIN duplicar la extension:
+    // "fizzbuzz.moka.txt" -> "fizzbuzz.moka", no "fizzbuzz.moka.txt.moka".
+    // (Guardar a secas sobre un .txt abierto no pasa por aca: escribe el
+    // mismo archivo y conserva su nombre.)
+    val sinTxt = if (limpio.endsWith(".txt", ignoreCase = true)) limpio.dropLast(4) else limpio
+    return if (sinTxt.endsWith(".moka", ignoreCase = true)) sinTxt else "$sinTxt.moka"
 }

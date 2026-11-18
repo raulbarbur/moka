@@ -18,7 +18,10 @@
 package ar.com.moka.app
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -74,7 +77,12 @@ fun App(
     // Los esquemas y los colores del editor viven en ui/Tema.kt.
     MaterialTheme(colorScheme = if (oscuro) esquemaOscuroMoka() else esquemaClaroMoka()) {
         CompositionLocalProvider(LocalColoresEditor provides coloresEditorMoka(oscuro)) {
-            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            // safeDrawing: en Android edge-to-edge la barra de estado y la
+            // de navegacion no tapan la UI; en desktop no cambia nada.
+            Surface(
+                modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing),
+                color = MaterialTheme.colorScheme.background
+            ) {
                 Taller(
                     controlador = controlador,
                     sesionArchivo = sesionArchivo,
