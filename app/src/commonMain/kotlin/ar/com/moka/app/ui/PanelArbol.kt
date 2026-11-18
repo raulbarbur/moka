@@ -1,19 +1,21 @@
 // =======================================================================
-//  PanelArbol.kt — El panel del analisis sintactico (sec. 5.3, panel 3)
+//  PanelArbol.kt - El panel del analisis sintactico (sec. 5.3, panel 3)
 // =======================================================================
-//  Dos vistas conmutables sobre el mismo fuente: el arbol de PARSEO
-//  (reglas del parser con sus tokens como hojas, errores en rojo) y el
-//  AST (mucho mas compacto: "Binaria(+)", "Variable(x)..."). Comparar
-//  una con la otra es el recurso didactico del panel. Ambas usan el
-//  mismo outline expandible.
+//  Dos contenidos sobre el mismo fuente: el arbol de PARSEO (reglas del
+//  parser con sus tokens como hojas, errores en rojo) y el AST (mucho
+//  mas compacto: "Binaria(+)", "Variable(x)...").
+//
+//  Extra final: el AST tambien puede verse como GRAFICO con Canvas, con
+//  zoom, pan y seleccion sincronizada con el editor. El arbol de parseo
+//  queda solo como outline a proposito: incluye cada token, parentesis y
+//  punto y coma, asi que un programa chico ya produce un diagrama enorme.
 //
 //  El AST puede no existir: si hubo errores de sintaxis, Artefacto.
 //  Sintactico.ast es null (sec. 4.7) y la vista AST lo dice, en vez de
 //  mostrar un arbol a medias.
 //
 //  Panel sin estado propio (sec. 5.1): recibe el Artefacto.Sintactico;
-//  la vista elegida y la expansion son estado de vista local.
-//  La vista grafica con Canvas (zoom/pan) quedo como extra del final.
+//  la vista elegida es estado de vista local.
 // =======================================================================
 package ar.com.moka.app.ui
 
@@ -50,8 +52,10 @@ fun PanelArbol(
     }
 
     var vistaAst by remember(sintactico) { mutableStateOf(false) }
+    var vistaGrafica by remember(sintactico) { mutableStateOf(false) }
 
     Column(modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+        // Primer nivel: QUE arbol se muestra.
         Row(verticalAlignment = Alignment.CenterVertically) {
             FilterChip(
                 selected = !vistaAst,
@@ -74,16 +78,43 @@ fun PanelArbol(
                 Modifier.fillMaxSize()
             )
             vistaAst -> {
+                // Segundo nivel, solo para AST: COMO se muestra.
+                Row(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilterChip(
+                        selected = !vistaGrafica,
+                        onClick = { vistaGrafica = false },
+                        label = { Text("Outline") }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    FilterChip(
+                        selected = vistaGrafica,
+                        onClick = { vistaGrafica = true },
+                        label = { Text("Grafico") }
+                    )
+                }
                 Text("AST (raiz: Programa)", style = MaterialTheme.typography.labelLarge)
-                OutlineArbol(
-                    raices = listOf(vistaDeAst(ast!!)),
-                    seleccion = seleccion,
-                    onSeleccionar = onSeleccionar,
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (vistaGrafica) {
+                    ArbolGrafico(
+                        raiz = vistaDeAst(ast!!),
+                        seleccion = seleccion,
+                        onSeleccionar = onSeleccionar,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    OutlineArbol(
+                        raices = listOf(vistaDeAst(ast!!)),
+                        seleccion = seleccion,
+                        onSeleccionar = onSeleccionar,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
             else -> {
-                Text("Arbol de parseo", style = MaterialTheme.typography.labelLarge)
+                Text("Arbol de parseo (outline; el grafico queda para el AST)",
+                    style = MaterialTheme.typography.labelLarge)
                 OutlineArbol(
                     raices = listOf(vistaDeParseo(sintactico.arbolParseo)),
                     seleccion = seleccion,
