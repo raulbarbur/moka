@@ -1,20 +1,24 @@
 // =======================================================================
-//  BarraFases.kt — La barra de fases o "pipeline strip" (sec. 5.2)
+//  BarraFases.kt - La barra de fases o "pipeline strip" (sec. 5.2)
 // =======================================================================
 //  Cinco chips, uno por fase, con su estado y su duracion. Es la
 //  expresion visual de FaseIniciada / FaseCompletada / FaseOmitida:
 //  esta funcion solo LEE el mapa de slots que reducir() ya actualizo.
 //
-//  (En 7.4+, tocar un chip abrira el panel de esa fase: el onClick se
-//  agrega aca.)
+//  7.11 agrega el modo compacto: en pantalla angosta los chips conservan
+//  un ancho legible y la fila se desplaza horizontalmente. En pantalla
+//  ancha siguen repartiendo todo el ancho, como en las fases anteriores.
 // =======================================================================
 package ar.com.moka.app.ui
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,14 +31,23 @@ import ar.com.moka.app.estado.EstadoFaseUi
 import ar.com.moka.core.pipeline.Fase
 import ar.com.moka.core.semantico.Severidad
 
+private val ANCHO_CHIP_COMPACTO = 112.dp
+
 @Composable
-fun BarraFases(fases: Map<Fase, EstadoFaseUi>) {
+fun BarraFases(fases: Map<Fase, EstadoFaseUi>, compacta: Boolean = false) {
+    val desplazamiento = rememberScrollState()
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        modifier = Modifier.fillMaxWidth()
+            .then(if (compacta) Modifier.horizontalScroll(desplazamiento) else Modifier)
+            .padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         for (fase in Fase.entries) {
-            ChipFase(fase, fases.getValue(fase), Modifier.weight(1f))
+            ChipFase(
+                fase,
+                fases.getValue(fase),
+                if (compacta) Modifier.width(ANCHO_CHIP_COMPACTO) else Modifier.weight(1f)
+            )
         }
     }
 }

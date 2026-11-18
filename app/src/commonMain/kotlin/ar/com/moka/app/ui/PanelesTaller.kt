@@ -1,10 +1,14 @@
 // =======================================================================
-//  PanelesTaller.kt — El contenedor con pestañas de los paneles de fase
+//  PanelesTaller.kt - Paneles de fase y su selector compartido
 // =======================================================================
-//  El lado derecho del Taller (sec. 5.2): pestañas Tokens | Arbol |
-//  Semantica | TAC | Ejecucion. Cada panel recibe solo el artefacto de
-//  su fase y lo poco mas que necesita del estado (sec. 5.1: paneles sin
-//  estado). Desde 7.7 existen las cinco.
+//  Contenedor del lado derecho en pantalla ANCHA (sec. 5.2): pestañas
+//  Tokens | Arbol | Semantica | TAC | Ejecucion. Cada panel recibe solo
+//  el artefacto de su fase y lo poco mas que necesita del estado.
+//
+//  Desde 7.11, el contenido esta extraido en PanelFase(). El modo
+//  angosto de Taller usa esa misma funcion para mostrar cada panel como
+//  una pestaña de pantalla completa. Asi las variantes ancha/angosta no
+//  duplican reglas ni pueden quedar con comportamientos distintos.
 // =======================================================================
 package ar.com.moka.app.ui
 
@@ -17,7 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,7 +36,8 @@ import ar.com.moka.core.ast.Posicion
 import ar.com.moka.core.pipeline.Artefacto
 import ar.com.moka.core.pipeline.Fase
 
-private val PESTANAS = listOf("Tokens", "Arbol", "Semantica", "TAC", "Ejecucion")
+// internal: Taller la usa para armar las pestañas grandes del modo angosto.
+internal val PESTANAS_FASES = listOf("Tokens", "Arbol", "Semantica", "TAC", "Ejecucion")
 
 @Composable
 fun PanelesTaller(
@@ -48,8 +53,8 @@ fun PanelesTaller(
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(Modifier.fillMaxSize()) {
-            TabRow(selectedTabIndex = pestana, modifier = Modifier.fillMaxWidth()) {
-                PESTANAS.forEachIndexed { indice, titulo ->
+            PrimaryTabRow(selectedTabIndex = pestana, modifier = Modifier.fillMaxWidth()) {
+                PESTANAS_FASES.forEachIndexed { indice, titulo ->
                     Tab(
                         selected = pestana == indice,
                         onClick = { pestana = indice },
@@ -57,46 +62,64 @@ fun PanelesTaller(
                     )
                 }
             }
-            when (pestana) {
-                0 -> PanelTokens(
-                    lexico = estado.fases.getValue(Fase.LEXICA).artefacto as? Artefacto.Lexico,
-                    seleccion = estado.seleccion,
-                    onSeleccionar = onSeleccionar,
-                    modifier = Modifier.fillMaxSize()
-                )
-                1 -> PanelArbol(
-                    sintactico = estado.fases.getValue(Fase.SINTACTICA).artefacto as? Artefacto.Sintactico,
-                    seleccion = estado.seleccion,
-                    onSeleccionar = onSeleccionar,
-                    modifier = Modifier.fillMaxSize()
-                )
-                2 -> {
-                    val slotSemantica = estado.fases.getValue(Fase.SEMANTICA)
-                    PanelSemantico(
-                        semantico = slotSemantica.artefacto as? Artefacto.Semantico,
-                        diagnosticos = slotSemantica.diagnosticos,
-                        seleccion = estado.seleccion,
-                        onSeleccionar = onSeleccionar,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                3 -> PanelTac(
-                    tac = estado.fases.getValue(Fase.GENERACION_TAC).artefacto as? Artefacto.Tac,
-                    pasoActual = estado.pasoActual,
-                    seleccion = estado.seleccion,
-                    onSeleccionar = onSeleccionar,
-                    modifier = Modifier.fillMaxSize()
-                )
-                else -> PanelEjecucion(
-                    pasoActual = estado.pasoActual,
-                    pidiendoEntrada = estado.pidiendoEntrada,
-                    terminado = estado.terminado,
-                    exito = estado.exito,
-                    cuadruplasEjecutadas = estado.cuadruplasEjecutadas,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+            PanelFase(
+                indice = pestana,
+                estado = estado,
+                onSeleccionar = onSeleccionar,
+                modifier = Modifier.fillMaxSize()
+            )
         }
+    }
+}
+
+// Unico mapa pestaña -> panel. Lo comparten:
+//  - el muelle derecho del modo ancho (PanelesTaller), y
+//  - las pestañas 1..5 del modo angosto (Taller).
+@Composable
+fun PanelFase(
+    indice: Int,
+    estado: EstadoWorkbench,
+    onSeleccionar: (Posicion) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    when (indice) {
+        0 -> PanelTokens(
+            lexico = estado.fases.getValue(Fase.LEXICA).artefacto as? Artefacto.Lexico,
+            seleccion = estado.seleccion,
+            onSeleccionar = onSeleccionar,
+            modifier = modifier
+        )
+        1 -> PanelArbol(
+            sintactico = estado.fases.getValue(Fase.SINTACTICA).artefacto as? Artefacto.Sintactico,
+            seleccion = estado.seleccion,
+            onSeleccionar = onSeleccionar,
+            modifier = modifier
+        )
+        2 -> {
+            val slotSemantica = estado.fases.getValue(Fase.SEMANTICA)
+            PanelSemantico(
+                semantico = slotSemantica.artefacto as? Artefacto.Semantico,
+                diagnosticos = slotSemantica.diagnosticos,
+                seleccion = estado.seleccion,
+                onSeleccionar = onSeleccionar,
+                modifier = modifier
+            )
+        }
+        3 -> PanelTac(
+            tac = estado.fases.getValue(Fase.GENERACION_TAC).artefacto as? Artefacto.Tac,
+            pasoActual = estado.pasoActual,
+            seleccion = estado.seleccion,
+            onSeleccionar = onSeleccionar,
+            modifier = modifier
+        )
+        else -> PanelEjecucion(
+            pasoActual = estado.pasoActual,
+            pidiendoEntrada = estado.pidiendoEntrada,
+            terminado = estado.terminado,
+            exito = estado.exito,
+            cuadruplasEjecutadas = estado.cuadruplasEjecutadas,
+            modifier = modifier
+        )
     }
 }
 
