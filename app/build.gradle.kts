@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.kotlinAndroid)
 }
 
 kotlin {
@@ -55,9 +54,7 @@ android {
         }
     }
 }
-dependencies {
-    implementation(libs.androidx.core.ktx)
-}
+
 
 compose.desktop {
     application {
@@ -68,3 +65,4 @@ compose.desktop {
         }
     }
 }
+

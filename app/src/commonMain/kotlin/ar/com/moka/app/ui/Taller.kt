@@ -87,7 +87,7 @@ fun Taller(
 ) {
     val estado by controlador.estado.collectAsState()
 
-    ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema, modo, alCambiarModo) {
+    ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema, modo, alCambiarModo, tamanioFuente, alCambiarTamanio) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             // Angosto por ancho O por altura: landscape de telefono cae
             // en pestañas aunque su ancho parezca de tablet.

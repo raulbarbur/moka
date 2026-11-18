@@ -54,6 +54,8 @@ fun ArchivoTaller(
     alCambiarTema: (TemaMoka) -> Unit,
     modo: ModoTaller,
     alCambiarModo: (ModoTaller) -> Unit,
+    tamanioFuente: Int,
+    alCambiarTamanio: (Int) -> Unit,
     contenido: @Composable () -> Unit
 ) {
     val estado by controlador.estado.collectAsState()
@@ -64,8 +66,8 @@ fun ArchivoTaller(
     val ambito = rememberCoroutineScope()
     var mensaje by remember { mutableStateOf<String?>(null) }
     var esError by remember { mutableStateOf(false) }
-    var menuEjemplos by remember { mutableStateOf(false) }
-    var menuTema by remember { mutableStateOf(false) }
+    var acercaDe by remember { mutableStateOf(false) }
+    val busqueda = LocalBusquedaEditor.current
     var pendiente by remember { mutableStateOf<ArchivoMoka?>(null) }
     val modificado = sesion.hayCambios(estado.fuente)
 
@@ -165,6 +167,7 @@ fun ArchivoTaller(
         if (evento.type != KeyEventType.KeyDown || !evento.isCtrlPressed) false else {
             when (evento.key) {
                 Key.S -> { guardar(como = false); true }
+                Key.F -> { busqueda.activa = !busqueda.activa; true }
                 Key.Enter -> {
                     if (!sesion.ocupado && pendiente == null) controlador.ejecutar()
                     true
@@ -173,56 +176,41 @@ fun ArchivoTaller(
             }
         }
     }) {
-        // En pantalla angosta (telefono en vertical) la barra se parte
-        // en dos filas: acciones arriba, Tema + nombre abajo. En ancha,
-        // una sola fila con scroll como siempre.
+        // Los menus agrupan todo lo que antes eran botones sueltos. En
+        // pantalla angosta (telefono en vertical) el nombre del archivo
+        // baja a una segunda linea; en ancha queda al lado de los menus.
+        val grupos = gruposDeMenu(
+            ocupado = sesion.ocupado,
+            alAbrir = ::abrir,
+            alGuardar = { guardar(false) },
+            alGuardarComo = { guardar(true) },
+            alGuardarYSalir = ::guardarYSalir,
+            alElegirEjemplo = ::ofrecerCarga,
+            alDeshacer = controlador::deshacer,
+            alRehacer = controlador::rehacer,
+            busquedaActiva = busqueda.activa,
+            alAlternarBusqueda = { busqueda.activa = !busqueda.activa },
+            tamanioFuente = tamanioFuente,
+            alCambiarTamanio = alCambiarTamanio,
+            tema = tema,
+            alCambiarTema = alCambiarTema,
+            modo = modo,
+            alCambiarModo = alCambiarModo,
+            alAbrirAcercaDe = { acercaDe = true }
+        )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val barraAngosta = maxWidth < 600.dp
-            if (barraAngosta) {
-                Column {
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        BotonesArchivo(
-                            ocupado = sesion.ocupado,
-                            alAbrir = ::abrir,
-                            alGuardar = { guardar(false) },
-                            alGuardarComo = { guardar(true) },
-                            ejemplosExpandido = menuEjemplos,
-                            alAlternarEjemplos = { menuEjemplos = it },
-                            alElegirEjemplo = ::ofrecerCarga
-                        )
-                    }
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        BotonTema(tema, menuTema, { menuTema = it }, alCambiarTema)
-                        BotonModo(modo, alCambiarModo)
-                        TextoArchivo(sesion, modificado)
-                    }
+            if (maxWidth < 600.dp) {
+                Column(Modifier.padding(horizontal = 4.dp)) {
+                    BarraMenus(grupos)
+                    Box(Modifier.padding(horizontal = 8.dp)) { TextoArchivo(sesion, modificado) }
                 }
             } else {
                 Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    BotonesArchivo(
-                        ocupado = sesion.ocupado,
-                        alAbrir = ::abrir,
-                        alGuardar = { guardar(false) },
-                        alGuardarComo = { guardar(true) },
-                        ejemplosExpandido = menuEjemplos,
-                        alAlternarEjemplos = { menuEjemplos = it },
-                        alElegirEjemplo = ::ofrecerCarga
-                    )
-                    BotonTema(tema, menuTema, { menuTema = it }, alCambiarTema)
-                    BotonModo(modo, alCambiarModo)
-                    TextoArchivo(sesion, modificado)
+                    BarraMenus(grupos)
+                    Box(Modifier.padding(horizontal = 12.dp)) { TextoArchivo(sesion, modificado) }
                 }
             }
         }
@@ -235,6 +223,15 @@ fun ArchivoTaller(
             )
         }
         Box(Modifier.weight(1f)) { contenido() }
+    }
+
+    if (acercaDe) {
+        AlertDialog(
+            onDismissRequest = { acercaDe = false },
+            title = { Text("Moka") },
+            text = { Text("Interprete didactico del lenguaje Moka: escribe un programa, ejecutalo y mira cada fase del compilador (tokens, arbol, semantica, TAC y ejecucion).") },
+            confirmButton = { TextButton(onClick = { acercaDe = false }) { Text("Cerrar") } }
+        )
     }
 
     pendiente?.let { nuevo ->
@@ -286,84 +283,93 @@ fun ArchivoTaller(
     }
 }
 
-// ---- Piezas de la barra de archivo (compartidas por modo ancho/angosto)
+// ---- Modelo de menus ----------------------------------------------------
+// Se arma en un solo lugar; la barra solo lo dibuja.
 
-@Composable
-private fun BotonesArchivo(
+// Proyecto multi-archivo (Moka 2, fase P3): el grupo ya esta previsto pero
+// oculto hasta que exista el soporte de carpetas y paquetes.
+private const val GRUPO_PROYECTO_VISIBLE = false
+
+private fun gruposDeMenu(
     ocupado: Boolean,
     alAbrir: () -> Unit,
     alGuardar: () -> Unit,
     alGuardarComo: () -> Unit,
-    ejemplosExpandido: Boolean,
-    alAlternarEjemplos: (Boolean) -> Unit,
-    alElegirEjemplo: (ArchivoMoka) -> Unit
-) {
-    TextButton(onClick = alAbrir, enabled = !ocupado) { Text("Abrir") }
-    TextButton(onClick = alGuardar, enabled = !ocupado) { Text("Guardar") }
-    TextButton(onClick = alGuardarComo, enabled = !ocupado) { Text("Guardar como") }
-    Box {
-        TextButton(onClick = { alAlternarEjemplos(true) }, enabled = !ocupado) { Text("Ejemplos") }
-        DropdownMenu(expanded = ejemplosExpandido, onDismissRequest = { alAlternarEjemplos(false) }) {
-            for (ejemplo in EjemplosMoka.todos) {
-                DropdownMenuItem(
-                    text = { Text(ejemplo.nombre) },
-                    onClick = {
-                        alAlternarEjemplos(false)
-                        alElegirEjemplo(ejemplo)
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BotonTema(
+    alGuardarYSalir: () -> Unit,
+    alElegirEjemplo: (ArchivoMoka) -> Unit,
+    alDeshacer: () -> Unit,
+    alRehacer: () -> Unit,
+    busquedaActiva: Boolean,
+    alAlternarBusqueda: () -> Unit,
+    tamanioFuente: Int,
+    alCambiarTamanio: (Int) -> Unit,
     tema: TemaMoka,
-    expandido: Boolean,
-    alAlternar: (Boolean) -> Unit,
-    alCambiarTema: (TemaMoka) -> Unit
-) {
-    Box {
-        TextButton(onClick = { alAlternar(true) }) {
-            Text(
-                when (tema) {
-                    TemaMoka.SISTEMA -> "Tema: sistema"
-                    TemaMoka.CLARO -> "Tema: claro"
-                    TemaMoka.OSCURO -> "Tema: oscuro"
-                }
-            )
-        }
-        DropdownMenu(expanded = expandido, onDismissRequest = { alAlternar(false) }) {
-            for (opcion in TemaMoka.entries) {
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            when (opcion) {
-                                TemaMoka.SISTEMA -> "Sistema"
-                                TemaMoka.CLARO -> "Claro"
-                                TemaMoka.OSCURO -> "Oscuro"
-                            }
-                        )
-                    },
-                    onClick = {
-                        alAlternar(false)
-                        alCambiarTema(opcion)
-                    }
-                )
+    alCambiarTema: (TemaMoka) -> Unit,
+    modo: ModoTaller,
+    alCambiarModo: (ModoTaller) -> Unit,
+    alAbrirAcercaDe: () -> Unit
+): List<GrupoMenu> {
+    val archivo = GrupoMenu(
+        "Archivo",
+        buildList {
+            add(ItemMenu("Abrir", habilitado = !ocupado, accion = alAbrir))
+            add(ItemMenu("Guardar", atajo = "Ctrl+S", habilitado = !ocupado, accion = alGuardar))
+            add(ItemMenu("Guardar como", habilitado = !ocupado, accion = alGuardarComo))
+            add(ItemMenu("Guardar y salir", habilitado = !ocupado, accion = alGuardarYSalir))
+            add(SeparadorMenu)
+            add(RotuloMenu("Ejemplos"))
+            for (ejemplo in EjemplosMoka.todos) {
+                add(ItemMenu(ejemplo.nombre, habilitado = !ocupado) { alElegirEjemplo(ejemplo) })
             }
         }
-    }
-}
-
-@Composable
-private fun BotonModo(modo: ModoTaller, alCambiarModo: (ModoTaller) -> Unit) {
-    // Dos opciones: un toque alterna. Simple muestra solo Codigo y
-    // Consola; los errores siguen llegando a la Consola.
-    TextButton(onClick = {
-        alCambiarModo(if (modo == ModoTaller.COMPLETO) ModoTaller.SIMPLE else ModoTaller.COMPLETO)
-    }) {
-        Text(if (modo == ModoTaller.COMPLETO) "Modo: completo" else "Modo: simple")
+    )
+    val editar = GrupoMenu(
+        "Editar",
+        listOf(
+            ItemMenu("Deshacer", accion = alDeshacer),
+            ItemMenu("Rehacer", accion = alRehacer),
+            SeparadorMenu,
+            ItemMenu("Buscar y reemplazar", atajo = "Ctrl+F", marcado = busquedaActiva, accion = alAlternarBusqueda),
+            SeparadorMenu,
+            ItemMenu("Letra mas grande (A+)", habilitado = tamanioFuente < 28) { alCambiarTamanio(tamanioFuente + 2) },
+            ItemMenu("Letra mas chica (A-)", habilitado = tamanioFuente > 10) { alCambiarTamanio(tamanioFuente - 2) }
+        )
+    )
+    val ver = GrupoMenu(
+        "Ver",
+        listOf(
+            RotuloMenu("Tema"),
+            ItemMenu("Sistema", marcado = tema == TemaMoka.SISTEMA) { alCambiarTema(TemaMoka.SISTEMA) },
+            ItemMenu("Claro", marcado = tema == TemaMoka.CLARO) { alCambiarTema(TemaMoka.CLARO) },
+            ItemMenu("Oscuro", marcado = tema == TemaMoka.OSCURO) { alCambiarTema(TemaMoka.OSCURO) },
+            SeparadorMenu,
+            RotuloMenu("Modo"),
+            ItemMenu("Completo", marcado = modo == ModoTaller.COMPLETO) { alCambiarModo(ModoTaller.COMPLETO) },
+            ItemMenu("Simple (solo editor y consola)", marcado = modo == ModoTaller.SIMPLE) { alCambiarModo(ModoTaller.SIMPLE) }
+        )
+    )
+    val ayuda = GrupoMenu(
+        "Ayuda",
+        listOf(
+            // Se activa con la Entrega 3C (tutoriales dentro de la app).
+            ItemMenu("Tutoriales (proximamente)", habilitado = false) {},
+            SeparadorMenu,
+            ItemMenu("Acerca de Moka", accion = alAbrirAcercaDe)
+        )
+    )
+    val proyecto = GrupoMenu(
+        "Proyecto",
+        listOf(
+            ItemMenu("Abrir carpeta (proximamente)", habilitado = false) {},
+            ItemMenu("Archivo nuevo (proximamente)", habilitado = false) {}
+        )
+    )
+    return buildList {
+        add(archivo)
+        add(editar)
+        add(ver)
+        if (GRUPO_PROYECTO_VISIBLE) add(proyecto)
+        add(ayuda)
     }
 }
 

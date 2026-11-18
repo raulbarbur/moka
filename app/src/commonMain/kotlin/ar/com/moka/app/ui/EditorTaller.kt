@@ -108,7 +108,9 @@ fun EditorTaller(
     }
 
     // ---- Buscar / reemplazar (v1: literal, distingue mayusculas) ----
-    var buscando by remember { mutableStateOf(false) }
+    // El menu Editar abre y cierra la busqueda (estado compartido).
+    val estadoBusqueda = LocalBusquedaEditor.current
+    val buscando = estadoBusqueda.activa
     var consulta by remember { mutableStateOf("") }
     var reemplazo by remember { mutableStateOf("") }
     val coincidencias = if (consulta.isEmpty()) 0
@@ -139,9 +141,8 @@ fun EditorTaller(
 
     Surface(modifier = modifier, shape = RoundedCornerShape(8.dp), tonalElevation = 1.dp) {
         Column {
-            // Barra del editor: tamaño de fuente, deshacer/rehacer (en el
-            // celular no hay Ctrl+Z comodo) y buscar. Con scroll para que
-            // nada se parta en pantallas angostas.
+            // Barra del editor: solo el titulo. Tamaño de letra, deshacer,
+            // rehacer y buscar viven ahora en los menus de la barra superior.
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp),
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
@@ -151,13 +152,6 @@ fun EditorTaller(
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
-                TextButton(onClick = { alCambiarTamanio(tamanioFuente - 2) }) { Text("A-") }
-                TextButton(onClick = { alCambiarTamanio(tamanioFuente + 2) }) { Text("A+") }
-                TextButton(onClick = alDeshacer) { Text("Deshacer") }
-                TextButton(onClick = alRehacer) { Text("Rehacer") }
-                TextButton(onClick = { buscando = !buscando }) {
-                    Text(if (buscando) "Cerrar busqueda" else "Buscar")
-                }
             }
             if (buscando) {
                 Row(
@@ -183,6 +177,7 @@ fun EditorTaller(
                         singleLine = true,
                         modifier = Modifier.width(160.dp)
                     )
+                    TextButton(onClick = { estadoBusqueda.activa = false }) { Text("Cerrar") }
                     TextButton(
                         onClick = {
                             val i = fuente.indexOf(consulta)
