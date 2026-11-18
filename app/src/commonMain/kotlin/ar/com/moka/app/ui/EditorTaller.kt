@@ -61,17 +61,20 @@ fun EditorTaller(
     onCambio: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val esquema = MaterialTheme.colorScheme
-    val coloresSintaxis = remember(esquema) {
+    // Los colores de sintaxis vienen de ui/Tema.kt (paleta IntelliJ),
+    // no del colorScheme general: en Darcula la palabra clave es naranja
+    // aunque el color de accion sea azul.
+    val coloresEditor = LocalColoresEditor.current
+    val coloresSintaxis = remember(coloresEditor) {
         mapOf(
-            CategoriaToken.PALABRA_CLAVE to esquema.primary,
-            CategoriaToken.LITERAL to esquema.tertiary,
-            CategoriaToken.DELIMITADOR to esquema.outline,
-            CategoriaToken.ERROR to esquema.error
+            CategoriaToken.PALABRA_CLAVE to coloresEditor.palabraClave,
+            CategoriaToken.LITERAL to coloresEditor.literal,
+            CategoriaToken.DELIMITADOR to coloresEditor.delimitador,
+            CategoriaToken.ERROR to coloresEditor.error
         )
     }
-    val colorError = esquema.error
-    val colorSeleccion = esquema.primary.copy(alpha = 0.25f)
+    val colorError = coloresEditor.error
+    val colorSeleccion = coloresEditor.seleccion
     // Se recalcula solo cuando cambia alguna de sus entradas.
     val transformacion = remember(fuente, tokens, diagnosticos, seleccion, coloresSintaxis) {
         PintadoEditor(fuente, tokens.orEmpty(), diagnosticos, seleccion, coloresSintaxis, colorError, colorSeleccion)

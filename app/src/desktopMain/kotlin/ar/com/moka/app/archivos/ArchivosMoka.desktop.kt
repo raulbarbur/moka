@@ -62,7 +62,10 @@ private class ArchivosDesktop : GestorArchivosMoka {
                 try {
                     dialogo.file = if (modo == FileDialog.SAVE) nombreMoka(anterior?.nombre.orEmpty()) else "*.moka"
                     anterior?.referencia?.let { dialogo.directory = File(it).parent }
-                    dialogo.setFilenameFilter { _, nombre -> nombre.endsWith(".moka", ignoreCase = true) }
+                    // Abrir acepta .moka y .txt; Guardar sigue forzando .moka (nombreMoka).
+                    dialogo.setFilenameFilter { _, nombre ->
+                        nombre.endsWith(".moka", ignoreCase = true) || nombre.endsWith(".txt", ignoreCase = true)
+                    }
                     continuacion.invokeOnCancellation { SwingUtilities.invokeLater { dialogo.dispose() } }
                     dialogo.isVisible = true
                     val elegido = dialogo.file?.let { nombre ->

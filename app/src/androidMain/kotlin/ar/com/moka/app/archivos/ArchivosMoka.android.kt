@@ -63,8 +63,9 @@ actual fun recordarGestorArchivosMoka(): GestorArchivosMoka {
                 } ?: return null
                 return withContext(Dispatchers.IO) {
                     val nombre = nombre(uri)
-                    if (!nombre.endsWith(".moka", ignoreCase = true)) {
-                        throw IOException("Selecciona un archivo con extension .moka.")
+                    // Programas .moka y tambien .txt.
+                    if (!nombre.endsWith(".moka", ignoreCase = true) && !nombre.endsWith(".txt", ignoreCase = true)) {
+                        throw IOException("Selecciona un archivo .moka o .txt.")
                     }
                     val contenido = resolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
                         ?: throw IOException("No se pudo leer el archivo.")

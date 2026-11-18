@@ -6,6 +6,7 @@ package ar.com.moka.app.ui
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -170,63 +171,56 @@ fun ArchivoTaller(
             }
         }
     }) {
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            TextButton(onClick = ::abrir, enabled = !sesion.ocupado) { Text("Abrir") }
-            TextButton(onClick = { guardar(false) }, enabled = !sesion.ocupado) { Text("Guardar") }
-            TextButton(onClick = { guardar(true) }, enabled = !sesion.ocupado) { Text("Guardar como") }
-            Box {
-                TextButton(onClick = { menuEjemplos = true }, enabled = !sesion.ocupado) { Text("Ejemplos") }
-                DropdownMenu(expanded = menuEjemplos, onDismissRequest = { menuEjemplos = false }) {
-                    for (ejemplo in EjemplosMoka.todos) {
-                        DropdownMenuItem(
-                            text = { Text(ejemplo.nombre) },
-                            onClick = {
-                                menuEjemplos = false
-                                ofrecerCarga(ejemplo)
-                            }
+        // En pantalla angosta (telefono en vertical) la barra se parte
+        // en dos filas: acciones arriba, Tema + nombre abajo. En ancha,
+        // una sola fila con scroll como siempre.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val barraAngosta = maxWidth < 600.dp
+            if (barraAngosta) {
+                Column {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        BotonesArchivo(
+                            ocupado = sesion.ocupado,
+                            alAbrir = ::abrir,
+                            alGuardar = { guardar(false) },
+                            alGuardarComo = { guardar(true) },
+                            ejemplosExpandido = menuEjemplos,
+                            alAlternarEjemplos = { menuEjemplos = it },
+                            alElegirEjemplo = ::ofrecerCarga
                         )
                     }
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        BotonTema(tema, menuTema, { menuTema = it }, alCambiarTema)
+                        TextoArchivo(sesion, modificado)
+                    }
                 }
-            }
-            Box {
-                TextButton(onClick = { menuTema = true }) {
-                    Text(
-                        when (tema) {
-                            TemaMoka.SISTEMA -> "Tema: sistema"
-                            TemaMoka.CLARO -> "Tema: claro"
-                            TemaMoka.OSCURO -> "Tema: oscuro"
-                        }
+            } else {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    BotonesArchivo(
+                        ocupado = sesion.ocupado,
+                        alAbrir = ::abrir,
+                        alGuardar = { guardar(false) },
+                        alGuardarComo = { guardar(true) },
+                        ejemplosExpandido = menuEjemplos,
+                        alAlternarEjemplos = { menuEjemplos = it },
+                        alElegirEjemplo = ::ofrecerCarga
                     )
-                }
-                DropdownMenu(expanded = menuTema, onDismissRequest = { menuTema = false }) {
-                    for (opcion in TemaMoka.entries) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    when (opcion) {
-                                        TemaMoka.SISTEMA -> "Sistema"
-                                        TemaMoka.CLARO -> "Claro"
-                                        TemaMoka.OSCURO -> "Oscuro"
-                                    }
-                                )
-                            },
-                            onClick = {
-                                menuTema = false
-                                alCambiarTema(opcion)
-                            }
-                        )
-                    }
+                    BotonTema(tema, menuTema, { menuTema = it }, alCambiarTema)
+                    TextoArchivo(sesion, modificado)
                 }
             }
-            Text(
-                (sesion.archivo?.nombre ?: "sin-titulo.moka") + (if (modificado) " *" else "") +
-                        (if (sesion.ocupado) " (esperando archivo...)" else ""),
-                style = MaterialTheme.typography.labelLarge
-            )
         }
         mensaje?.let { texto ->
             Text(
@@ -286,4 +280,83 @@ fun ArchivoTaller(
             }
         )
     }
+}
+
+// ---- Piezas de la barra de archivo (compartidas por modo ancho/angosto)
+
+@Composable
+private fun BotonesArchivo(
+    ocupado: Boolean,
+    alAbrir: () -> Unit,
+    alGuardar: () -> Unit,
+    alGuardarComo: () -> Unit,
+    ejemplosExpandido: Boolean,
+    alAlternarEjemplos: (Boolean) -> Unit,
+    alElegirEjemplo: (ArchivoMoka) -> Unit
+) {
+    TextButton(onClick = alAbrir, enabled = !ocupado) { Text("Abrir") }
+    TextButton(onClick = alGuardar, enabled = !ocupado) { Text("Guardar") }
+    TextButton(onClick = alGuardarComo, enabled = !ocupado) { Text("Guardar como") }
+    Box {
+        TextButton(onClick = { alAlternarEjemplos(true) }, enabled = !ocupado) { Text("Ejemplos") }
+        DropdownMenu(expanded = ejemplosExpandido, onDismissRequest = { alAlternarEjemplos(false) }) {
+            for (ejemplo in EjemplosMoka.todos) {
+                DropdownMenuItem(
+                    text = { Text(ejemplo.nombre) },
+                    onClick = {
+                        alAlternarEjemplos(false)
+                        alElegirEjemplo(ejemplo)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BotonTema(
+    tema: TemaMoka,
+    expandido: Boolean,
+    alAlternar: (Boolean) -> Unit,
+    alCambiarTema: (TemaMoka) -> Unit
+) {
+    Box {
+        TextButton(onClick = { alAlternar(true) }) {
+            Text(
+                when (tema) {
+                    TemaMoka.SISTEMA -> "Tema: sistema"
+                    TemaMoka.CLARO -> "Tema: claro"
+                    TemaMoka.OSCURO -> "Tema: oscuro"
+                }
+            )
+        }
+        DropdownMenu(expanded = expandido, onDismissRequest = { alAlternar(false) }) {
+            for (opcion in TemaMoka.entries) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            when (opcion) {
+                                TemaMoka.SISTEMA -> "Sistema"
+                                TemaMoka.CLARO -> "Claro"
+                                TemaMoka.OSCURO -> "Oscuro"
+                            }
+                        )
+                    },
+                    onClick = {
+                        alAlternar(false)
+                        alCambiarTema(opcion)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TextoArchivo(sesion: SesionArchivoMoka, modificado: Boolean) {
+    Text(
+        (sesion.archivo?.nombre ?: "sin-titulo.moka") + (if (modificado) " *" else "") +
+                (if (sesion.ocupado) " (esperando archivo...)" else ""),
+        style = MaterialTheme.typography.labelLarge
+    )
 }

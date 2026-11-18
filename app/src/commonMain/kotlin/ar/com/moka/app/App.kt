@@ -21,9 +21,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,7 +31,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import ar.com.moka.app.archivos.SesionArchivoMoka
 import ar.com.moka.app.estado.MokaControlador
+import ar.com.moka.app.ui.LocalColoresEditor
 import ar.com.moka.app.ui.Taller
+import ar.com.moka.app.ui.coloresEditorMoka
+import ar.com.moka.app.ui.esquemaClaroMoka
+import ar.com.moka.app.ui.esquemaOscuroMoka
 
 // Las tres opciones del selector de tema. SISTEMA sigue al telefono o al
 // escritorio; CLARO y OSCURO fuerzan la eleccion del usuario.
@@ -55,15 +58,18 @@ fun App(
         TemaMoka.OSCURO -> true
     }
 
-    MaterialTheme(colorScheme = if (oscuro) darkColorScheme() else lightColorScheme()) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Taller(
-                controlador = controlador,
-                sesionArchivo = sesionArchivo,
-                alSalir = alSalir,
-                tema = tema,
-                alCambiarTema = { tema = it }
-            )
+    // Los esquemas y los colores del editor viven en ui/Tema.kt.
+    MaterialTheme(colorScheme = if (oscuro) esquemaOscuroMoka() else esquemaClaroMoka()) {
+        CompositionLocalProvider(LocalColoresEditor provides coloresEditorMoka(oscuro)) {
+            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Taller(
+                    controlador = controlador,
+                    sesionArchivo = sesionArchivo,
+                    alSalir = alSalir,
+                    tema = tema,
+                    alCambiarTema = { tema = it }
+                )
+            }
         }
     }
 }
