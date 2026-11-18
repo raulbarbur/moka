@@ -37,6 +37,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import ar.com.moka.app.TemaMoka
+import ar.com.moka.app.ajustes.recordarAjustesMoka
 import ar.com.moka.app.archivos.ArchivoMoka
 import ar.com.moka.app.archivos.EjemplosMoka
 import ar.com.moka.app.archivos.SesionArchivoMoka
@@ -68,6 +69,8 @@ fun ArchivoTaller(
     var esError by remember { mutableStateOf(false) }
     var acercaDe by remember { mutableStateOf(false) }
     val busqueda = LocalBusquedaEditor.current
+    val opciones = LocalOpcionesEditor.current
+    val ajustes = recordarAjustesMoka()
     var pendiente by remember { mutableStateOf<ArchivoMoka?>(null) }
     val modificado = sesion.hayCambios(estado.fuente)
 
@@ -190,6 +193,11 @@ fun ArchivoTaller(
             alRehacer = controlador::rehacer,
             busquedaActiva = busqueda.activa,
             alAlternarBusqueda = { busqueda.activa = !busqueda.activa },
+            autocompletado = opciones.autocompletado,
+            alAlternarAutocompletado = {
+                opciones.autocompletado = !opciones.autocompletado
+                ajustes.escribir("autocompletado", if (opciones.autocompletado) "si" else "no")
+            },
             tamanioFuente = tamanioFuente,
             alCambiarTamanio = alCambiarTamanio,
             tema = tema,
@@ -301,6 +309,8 @@ private fun gruposDeMenu(
     alRehacer: () -> Unit,
     busquedaActiva: Boolean,
     alAlternarBusqueda: () -> Unit,
+    autocompletado: Boolean,
+    alAlternarAutocompletado: () -> Unit,
     tamanioFuente: Int,
     alCambiarTamanio: (Int) -> Unit,
     tema: TemaMoka,
@@ -330,6 +340,7 @@ private fun gruposDeMenu(
             ItemMenu("Rehacer", accion = alRehacer),
             SeparadorMenu,
             ItemMenu("Buscar y reemplazar", atajo = "Ctrl+F", marcado = busquedaActiva, accion = alAlternarBusqueda),
+            ItemMenu("Autocompletado", marcado = autocompletado, accion = alAlternarAutocompletado),
             SeparadorMenu,
             ItemMenu("Letra mas grande (A+)", habilitado = tamanioFuente < 28) { alCambiarTamanio(tamanioFuente + 2) },
             ItemMenu("Letra mas chica (A-)", habilitado = tamanioFuente > 10) { alCambiarTamanio(tamanioFuente - 2) }

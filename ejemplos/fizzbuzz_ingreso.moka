@@ -1,0 +1,17 @@
+imprimir_sin_salto("Ingresa un numero: ");
+entero a = a_entero(leer());
+para (entero i = 1; i <= a; i = i + 1) {
+    si (i % 15 == 0) {
+        imprimir("FizzBuzz");
+    } sino {
+        si (i % 3 == 0) {
+            imprimir("Fizz");
+        } sino {
+            si (i % 5 == 0) {
+                imprimir("Buzz");
+            } sino {
+                imprimir(i);
+            }
+        }
+    }
+}

@@ -91,3 +91,19 @@ class EstadoBusqueda {
 }
 
 val LocalBusquedaEditor = compositionLocalOf { EstadoBusqueda() }
+
+// Opciones del editor que se cambian desde los menus.
+class OpcionesEditor {
+    var autocompletado by mutableStateOf(true)
+}
+
+val LocalOpcionesEditor = compositionLocalOf { OpcionesEditor() }
+
+// Contador de "pedidos de salto": cada vez que se toca un error, token o
+// nodo para seleccionarlo, sube en uno y el editor vuelve a desplazarse
+// aunque la posicion elegida sea la misma de antes.
+class PedidoSalto {
+    var version by mutableStateOf(0)
+}
+
+val LocalSaltoEditor = compositionLocalOf { PedidoSalto() }
