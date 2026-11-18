@@ -1,5 +1,5 @@
 // =======================================================================
-//  PanelEjecucion.kt — El panel de ejecucion (sec. 5.3, panel 6)
+//  PanelEjecucion.kt - El panel de ejecucion (sec. 5.3, panel 6)
 // =======================================================================
 //  La SALIDA del programa esta en la consola de abajo (esa es su unica
 //  fuente, sec. 5.1); este panel muestra lo demas:
@@ -67,6 +67,20 @@ fun PanelEjecucion(
                 style = MaterialTheme.typography.labelMedium,
                 modifier = Modifier.padding(top = 8.dp)
             )
+            Text("Globales y campos estaticos", style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(top = 8.dp))
+            if (paso.globales.isEmpty()) {
+                Text("  (ninguno escrito todavia)", style = MONO_CHICO,
+                    color = MaterialTheme.colorScheme.outline)
+            }
+            for ((nombre, valor) in paso.globales.entries.sortedBy { it.key }) {
+                Text("  $nombre = $valor", style = MONO_CHICO)
+            }
+            Text("Solo aparecen valores ya escritos. Las claves son las del TAC; " +
+                    "los objetos se muestran como referencias, no se ejecuta su a_cadena().",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp))
             for (marco in paso.marcos) {
                 Text("marco: ${marco.nombre}", style = MONO_CHICO, modifier = Modifier.padding(top = 4.dp))
                 if (marco.variables.isEmpty() && marco.temporales.isEmpty()) {

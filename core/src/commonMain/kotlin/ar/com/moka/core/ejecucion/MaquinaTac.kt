@@ -1,5 +1,5 @@
 // ============================================================================
-//  MaquinaTac.kt — Maquina de ejecucion de cuadruplas (sec. 4.6)
+//  MaquinaTac.kt - Maquina de ejecucion de cuadruplas (sec. 4.6)
 // ============================================================================
 //  Ejecuta un ProgramaTac cuadrupla por cuadrupla y va emitiendo un Flow
 //  de EventoEjecucion (salida, pedidos de entrada, pasos, errores, fin).
@@ -131,7 +131,12 @@ class MaquinaTac(
             ?: throw ErrorMoka("EJE-000", "El contador de programa salio del rango de cuadruplas.", null)
         pc++
         if (configuracion.pasoAPaso) {
-            emit(EventoEjecucion.Paso(c.indice, c, vistaDeMarcos()))
+            emit(EventoEjecucion.Paso(
+                c.indice, c, vistaDeMarcos(),
+                // mapValues construye otro mapa: una pausa anterior no
+                // cambia cuando se asigna una global en el paso siguiente.
+                globales.mapValues { (_, valor) -> textoCrudo(valor) }
+            ))
         }
         ejecutadas++
         // Cede el hilo cada tanto para que la GUI siga respondiendo

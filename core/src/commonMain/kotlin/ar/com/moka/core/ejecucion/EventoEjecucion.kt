@@ -1,5 +1,5 @@
 // =======================================================================
-//  EventoEjecucion.kt — Eventos del Flow de ejecucion (sec. 4.6)
+//  EventoEjecucion.kt - Eventos del Flow de ejecucion (sec. 4.6)
 // =======================================================================
 //  La MaquinaTac NO imprime ni lee directamente: emite un Flow de estos
 //  eventos y quien la invoca decide que hacer (CLI: print/readLine;
@@ -26,7 +26,15 @@ sealed class EventoEjecucion {
 
     // Un paso en modo paso a paso: la cuadrupla que esta por
     // ejecutarse y la vista actual de la pila de marcos.
-    data class Paso(val pc: Int, val cuadrupla: Cuadrupla, val marcos: List<MarcoVista>) : EventoEjecucion()
+    data class Paso(
+        val pc: Int,
+        val cuadrupla: Cuadrupla,
+        val marcos: List<MarcoVista>,
+        // Foto independiente de globales y campos estaticos YA escritos.
+        // Claves: idUnico de la variable o Clase.campo para estaticos.
+        // Default conserva los constructores de tres argumentos existentes.
+        val globales: Map<String, String> = emptyMap()
+    ) : EventoEjecucion()
 
     // Error en tiempo de ejecucion (codigos EJE-xxx de la sec. 2.9 y
     // 4.6). La posicion apunta a la sentencia fuente que lo origino,
