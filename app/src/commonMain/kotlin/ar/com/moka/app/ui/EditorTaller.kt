@@ -20,15 +20,32 @@
 // =======================================================================
 package ar.com.moka.app.ui
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +56,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,6 +82,10 @@ fun EditorTaller(
     diagnosticos: List<Diagnostico>,
     seleccion: Posicion?,
     onCambio: (String) -> Unit,
+    tamanioFuente: Int,
+    alCambiarTamanio: (Int) -> Unit,
+    alDeshacer: () -> Unit,
+    alRehacer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Los colores de sintaxis vienen de ui/Tema.kt (paleta IntelliJ),
@@ -79,24 +106,130 @@ fun EditorTaller(
     val transformacion = remember(fuente, tokens, diagnosticos, seleccion, coloresSintaxis) {
         PintadoEditor(fuente, tokens.orEmpty(), diagnosticos, seleccion, coloresSintaxis, colorError, colorSeleccion)
     }
+
+    // ---- Buscar / reemplazar (v1: literal, distingue mayusculas) ----
+    var buscando by remember { mutableStateOf(false) }
+    var consulta by remember { mutableStateOf("") }
+    var reemplazo by remember { mutableStateOf("") }
+    val coincidencias = if (consulta.isEmpty()) 0
+    else Regex.fromLiteral(consulta).findAll(fuente).count()
+
+    // ---- Numeros de linea y salto a la seleccion ----
+    // El editor y su margen viven en UN solo contenedor con scroll: asi
+    // los numeros acompañan el texto sin sincronizacion manual, y tocar
+    // un error en Problemas desplaza todo a esa linea. Tocar cualquier
+    // parte del panel enfoca el campo (FocusRequester).
+    val desplazamiento = rememberScrollState()
+    val foco = remember { FocusRequester() }
+    val altoLinea = (tamanioFuente * 1.3).sp
+    val altoLineaPx = with(LocalDensity.current) { altoLinea.toPx() }
+    LaunchedEffect(seleccion) {
+        if (seleccion != null) {
+            desplazamiento.scrollTo(((seleccion.linea - 1) * altoLineaPx).toInt().coerceAtLeast(0))
+        }
+    }
+
+    val estiloCodigo = TextStyle(
+        fontFamily = FontFamily.Monospace,
+        fontSize = tamanioFuente.sp,
+        lineHeight = altoLinea,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+    val totalLineas = fuente.count { it == '\n' } + 1
+
     Surface(modifier = modifier, shape = RoundedCornerShape(8.dp), tonalElevation = 1.dp) {
         Column {
-            Text(
-                "Codigo fuente",
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-            )
-            BasicTextField(
-                value = fuente,
-                onValueChange = onCambio,
-                visualTransformation = transformacion,
-                textStyle = TextStyle(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp)
-            )
+            // Barra del editor: tamaño de fuente, deshacer/rehacer (en el
+            // celular no hay Ctrl+Z comodo) y buscar. Con scroll para que
+            // nada se parta en pantallas angostas.
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text(
+                    "Codigo fuente",
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+                TextButton(onClick = { alCambiarTamanio(tamanioFuente - 2) }) { Text("A-") }
+                TextButton(onClick = { alCambiarTamanio(tamanioFuente + 2) }) { Text("A+") }
+                TextButton(onClick = alDeshacer) { Text("Deshacer") }
+                TextButton(onClick = alRehacer) { Text("Rehacer") }
+                TextButton(onClick = { buscando = !buscando }) {
+                    Text(if (buscando) "Cerrar busqueda" else "Buscar")
+                }
+            }
+            if (buscando) {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    TextField(
+                        value = consulta,
+                        onValueChange = { consulta = it },
+                        label = { Text("Buscar") },
+                        singleLine = true,
+                        modifier = Modifier.width(160.dp)
+                    )
+                    Text(
+                        "$coincidencias",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    TextField(
+                        value = reemplazo,
+                        onValueChange = { reemplazo = it },
+                        label = { Text("Reemplazar por") },
+                        singleLine = true,
+                        modifier = Modifier.width(160.dp)
+                    )
+                    TextButton(
+                        onClick = {
+                            val i = fuente.indexOf(consulta)
+                            if (consulta.isNotEmpty() && i >= 0) {
+                                onCambio(fuente.replaceRange(i, i + consulta.length, reemplazo))
+                            }
+                        },
+                        enabled = coincidencias > 0
+                    ) { Text("Reemplazar") }
+                    TextButton(
+                        onClick = { if (consulta.isNotEmpty()) onCambio(fuente.replace(consulta, reemplazo)) },
+                        enabled = coincidencias > 0
+                    ) { Text("Todo") }
+                }
+            }
+            // El alto del VIEWPORT se toma afuera del scroll: adentro el
+            // maximo es infinito y no sirve para minHeight.
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val altoPanel = this.maxHeight
+                Column(
+                    Modifier.fillMaxSize()
+                        .verticalScroll(desplazamiento)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { foco.requestFocus() }
+                        .padding(start = 12.dp, end = 12.dp, bottom = 4.dp)
+                ) {
+                    // defaultMinSize: aunque el programa sea de una linea, la
+                    // zona de toque/edicion ocupa todo el panel.
+                    Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = altoPanel)) {
+                        Text(
+                            (1..totalLineas).joinToString("\n"),
+                            style = estiloCodigo.copy(color = coloresEditor.delimitador),
+                            textAlign = TextAlign.End
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        BasicTextField(
+                            value = fuente,
+                            onValueChange = onCambio,
+                            visualTransformation = transformacion,
+                            textStyle = estiloCodigo,
+                            modifier = Modifier.fillMaxWidth().focusRequester(foco)
+                        )
+                    }
+                }
+            }
         }
     }
 }

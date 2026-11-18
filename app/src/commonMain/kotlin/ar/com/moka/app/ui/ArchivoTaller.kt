@@ -52,6 +52,8 @@ fun ArchivoTaller(
     alSalir: () -> Unit,
     tema: TemaMoka,
     alCambiarTema: (TemaMoka) -> Unit,
+    modo: ModoTaller,
+    alCambiarModo: (ModoTaller) -> Unit,
     contenido: @Composable () -> Unit
 ) {
     val estado by controlador.estado.collectAsState()
@@ -199,6 +201,7 @@ fun ArchivoTaller(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         BotonTema(tema, menuTema, { menuTema = it }, alCambiarTema)
+                        BotonModo(modo, alCambiarModo)
                         TextoArchivo(sesion, modificado)
                     }
                 }
@@ -218,6 +221,7 @@ fun ArchivoTaller(
                         alElegirEjemplo = ::ofrecerCarga
                     )
                     BotonTema(tema, menuTema, { menuTema = it }, alCambiarTema)
+                    BotonModo(modo, alCambiarModo)
                     TextoArchivo(sesion, modificado)
                 }
             }
@@ -349,6 +353,17 @@ private fun BotonTema(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun BotonModo(modo: ModoTaller, alCambiarModo: (ModoTaller) -> Unit) {
+    // Dos opciones: un toque alterna. Simple muestra solo Codigo y
+    // Consola; los errores siguen llegando a la Consola.
+    TextButton(onClick = {
+        alCambiarModo(if (modo == ModoTaller.COMPLETO) ModoTaller.SIMPLE else ModoTaller.COMPLETO)
+    }) {
+        Text(if (modo == ModoTaller.COMPLETO) "Modo: completo" else "Modo: simple")
     }
 }
 

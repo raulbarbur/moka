@@ -22,24 +22,44 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-// ---------- UI clara (IntelliJ Light) ----------
-private val CLARO_AZUL = Color(0xFF3574F0)    // azul de accion IntelliJ
+// ---------- UI clara (IntelliJ Light, sobria) ----------
+// En IntelliJ los botones no son azules grandes: son planos y neutros,
+// y el color se reserva para ESTADO (error rojo, ok sutil). Por eso
+// primary es un gris pizarra y no el azul brillante por defecto.
+// Ojo: en Material el mismo "primary" pinta el fondo de los botones
+// rellenos y el texto de los TextButton, asi que el gris elegido tiene
+// que leerse bien en ambos roles.
+private val CLARO_AZUL = Color(0xFF4B5563)      // acento sobrio (gris pizarra)
 private val CLARO_FONDO = Color(0xFFFFFFFF)
 private val CLARO_PANEL = Color(0xFFF7F8FA)   // fondo de paneles IntelliJ
 private val CLARO_TEXTO = Color(0xFF1D1D1D)
 private val CLARO_ERROR = Color(0xFFC7222D)
+private val CLARO_OK = Color(0xFFDCE8DC)      // chip completada: verde muy sutil
+private val CLARO_CORRIENDO = Color(0xFFDFE1E5)
+private val CLARO_ERROR_FONDO = Color(0xFFF7D8DB)
 
-// ---------- UI oscura (Darcula) ----------
-private val OSCURO_AZUL = Color(0xFF548AF7)   // azul de accion en Darcula
+// ---------- UI oscura (Darcula, sobria) ----------
+private val OSCURO_AZUL = Color(0xFF9AA0A6)   // acento sobrio (gris claro)
 private val OSCURO_FONDO = Color(0xFF2B2B2B)
 private val OSCURO_PANEL = Color(0xFF3C3F41)
 private val OSCURO_TEXTO = Color(0xFFA9B7C6)
 private val OSCURO_ERROR = Color(0xFFE55765)
+private val OSCURO_OK = Color(0xFF39503A)     // verde apagado Darcula
+private val OSCURO_CORRIENDO = Color(0xFF45494D)
+private val OSCURO_ERROR_FONDO = Color(0xFF5C3238)
 
 fun esquemaClaroMoka(): ColorScheme = lightColorScheme(
     primary = CLARO_AZUL,
     onPrimary = Color.White,
+    // Los chips de fase usan estos contenedores: completada = ok sutil,
+    // corriendo = gris, error = rojo suave. Pendiente/omitida = panel.
+    primaryContainer = CLARO_OK,
+    onPrimaryContainer = CLARO_TEXTO,
+    secondaryContainer = CLARO_CORRIENDO,
+    onSecondaryContainer = CLARO_TEXTO,
     error = CLARO_ERROR,
+    errorContainer = CLARO_ERROR_FONDO,
+    onErrorContainer = Color(0xFF5F1218),
     background = CLARO_FONDO,
     onBackground = CLARO_TEXTO,
     surface = CLARO_FONDO,
@@ -51,8 +71,14 @@ fun esquemaClaroMoka(): ColorScheme = lightColorScheme(
 
 fun esquemaOscuroMoka(): ColorScheme = darkColorScheme(
     primary = OSCURO_AZUL,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFF1D1D1D),
+    primaryContainer = OSCURO_OK,
+    onPrimaryContainer = OSCURO_TEXTO,
+    secondaryContainer = OSCURO_CORRIENDO,
+    onSecondaryContainer = OSCURO_TEXTO,
     error = OSCURO_ERROR,
+    errorContainer = OSCURO_ERROR_FONDO,
+    onErrorContainer = Color(0xFFF2B8BD),
     background = OSCURO_FONDO,
     onBackground = OSCURO_TEXTO,
     surface = OSCURO_FONDO,

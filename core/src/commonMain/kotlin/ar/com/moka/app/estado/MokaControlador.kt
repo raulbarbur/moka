@@ -79,6 +79,44 @@ class MokaControlador(
 
     fun cambiarFuente(nueva: String) {
         if (nueva == _estado.value.fuente) return
+        registrarDeshacer(_estado.value.fuente)
+        cambiarFuenteInterno(nueva)
+    }
+
+    // ---- Deshacer / rehacer del texto fuente ----
+    // Historial simple con tope: cada cambio que llega a mas de 700 ms
+    // del anterior abre un paso nuevo; tipear seguido se deshace de una
+    // sola vez. Pensado para los botones de la barra del editor, sobre
+    // todo en celular, donde no hay Ctrl+Z comodo.
+    private val deshacerPila = ArrayDeque<String>()
+    private val rehacerPila = ArrayDeque<String>()
+    private var ultimaEdicion = 0L
+
+    private fun registrarDeshacer(anterior: String) {
+        val ahora = System.currentTimeMillis()
+        if (deshacerPila.isEmpty() || ahora - ultimaEdicion > 700) {
+            deshacerPila.addLast(anterior)
+            if (deshacerPila.size > 200) deshacerPila.removeFirst()
+        }
+        ultimaEdicion = ahora
+        rehacerPila.clear()
+    }
+
+    fun deshacer() {
+        val anterior = deshacerPila.removeLastOrNull() ?: return
+        rehacerPila.addLast(_estado.value.fuente)
+        ultimaEdicion = 0
+        cambiarFuenteInterno(anterior)
+    }
+
+    fun rehacer() {
+        val siguiente = rehacerPila.removeLastOrNull() ?: return
+        deshacerPila.addLast(_estado.value.fuente)
+        ultimaEdicion = 0
+        cambiarFuenteInterno(siguiente)
+    }
+
+    private fun cambiarFuenteInterno(nueva: String) {
         // No mezclamos variables/TAC de una fuente con el editor de otra.
         if (actual != null) detener()
         revision++

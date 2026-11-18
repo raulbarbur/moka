@@ -19,6 +19,8 @@
 // =======================================================================
 package ar.com.moka.app.ui
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -65,40 +67,71 @@ private val ALTURA_FRANJA_INFERIOR = 220.dp
 private val PESTANAS_ANGOSTAS =
     listOf("Codigo") + PESTANAS_FASES + listOf("Problemas", "Consola")
 
+// Modo simple: solo Codigo y Consola, sin fases ni paneles internos del
+// compilador. Pensado para quien solo quiere escribir y correr programas.
+// Los errores llegan igual a la Consola (salida del pipeline).
+enum class ModoTaller { COMPLETO, SIMPLE }
+private val PESTANAS_SIMPLES = listOf("Codigo", "Consola")
+
 @Composable
 fun Taller(
     controlador: MokaControlador,
     sesionArchivo: SesionArchivoMoka,
     alSalir: () -> Unit,
     tema: TemaMoka,
-    alCambiarTema: (TemaMoka) -> Unit
+    alCambiarTema: (TemaMoka) -> Unit,
+    modo: ModoTaller,
+    alCambiarModo: (ModoTaller) -> Unit,
+    tamanioFuente: Int,
+    alCambiarTamanio: (Int) -> Unit
 ) {
     val estado by controlador.estado.collectAsState()
 
-    ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema) {
+    ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema, modo, alCambiarModo) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             // Angosto por ancho O por altura: landscape de telefono cae
             // en pestañas aunque su ancho parezca de tablet.
             val angosto = maxWidth < ANCHO_MINIMO_MUELLES || maxHeight < ALTURA_MINIMA_MUELLES
+            val simple = modo == ModoTaller.SIMPLE
             Column(Modifier.fillMaxSize()) {
-                BarraAcciones(controlador, angosto)
-                BarraDepuracion(controlador)
+                BarraAcciones(controlador, angosto || simple)
+                if (!simple) {
+                    BarraDepuracion(controlador)
 
-                // La tira de fases queda en TODOS los tamaños: en angosta
-                // se vuelve desplazable para no comprimir sus cinco chips.
-                BarraFases(estado.fases, compacta = angosto)
+                    // La tira de fases queda en TODOS los tamaños: en
+                    // angosta se vuelve desplazable para no comprimir sus
+                    // cinco chips.
+                    BarraFases(estado.fases, compacta = angosto)
+                }
 
-                if (angosto) {
+                if (simple) {
                     ContenidoPorPestanas(
                         estado = estado,
                         controlador = controlador,
                         modificado = sesionArchivo.hayCambios(estado.fuente),
+                        pestanas = PESTANAS_SIMPLES,
+                        simple = true,
+                        tamanioFuente = tamanioFuente,
+                        alCambiarTamanio = alCambiarTamanio,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else if (angosto) {
+                    ContenidoPorPestanas(
+                        estado = estado,
+                        controlador = controlador,
+                        modificado = sesionArchivo.hayCambios(estado.fuente),
+                        pestanas = PESTANAS_ANGOSTAS,
+                        simple = false,
+                        tamanioFuente = tamanioFuente,
+                        alCambiarTamanio = alCambiarTamanio,
                         modifier = Modifier.weight(1f)
                     )
                 } else {
                     ContenidoConMuelles(
                         estado = estado,
                         controlador = controlador,
+                        tamanioFuente = tamanioFuente,
+                        alCambiarTamanio = alCambiarTamanio,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -113,7 +146,9 @@ fun Taller(
 @Composable
 private fun BarraAcciones(controlador: MokaControlador, angosto: Boolean) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (!angosto) {
@@ -135,6 +170,8 @@ private fun BarraAcciones(controlador: MokaControlador, angosto: Boolean) {
 private fun ContenidoConMuelles(
     estado: EstadoWorkbench,
     controlador: MokaControlador,
+    tamanioFuente: Int,
+    alCambiarTamanio: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier.fillMaxWidth()) {
@@ -146,6 +183,10 @@ private fun ContenidoConMuelles(
                 diagnosticos = estado.diagnosticos,
                 seleccion = estado.seleccion,
                 onCambio = controlador::cambiarFuente,
+                tamanioFuente = tamanioFuente,
+                alCambiarTamanio = alCambiarTamanio,
+                alDeshacer = controlador::deshacer,
+                alRehacer = controlador::rehacer,
                 modifier = Modifier.weight(1f).fillMaxHeight().padding(start = 12.dp, bottom = 8.dp)
             )
             PanelesTaller(
@@ -185,6 +226,10 @@ private fun ContenidoPorPestanas(
     estado: EstadoWorkbench,
     controlador: MokaControlador,
     modificado: Boolean,
+    pestanas: List<String>,
+    simple: Boolean,
+    tamanioFuente: Int,
+    alCambiarTamanio: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var pestana by remember { mutableIntStateOf(0) }
@@ -195,7 +240,7 @@ private fun ContenidoPorPestanas(
             modifier = Modifier.fillMaxWidth(),
             edgePadding = 8.dp
         ) {
-            PESTANAS_ANGOSTAS.forEachIndexed { indice, titulo ->
+            pestanas.forEachIndexed { indice, titulo ->
                 // El asterisco de modificado tambien en la pestaña Codigo:
                 // en modo pestañas la barra de archivo puede quedar lejos.
                 val rotulo = if (indice == 0 && modificado) "$titulo *" else titulo
@@ -210,22 +255,35 @@ private fun ContenidoPorPestanas(
         Box(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp)) {
             val contenido = Modifier.fillMaxSize()
                 .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
-            when (pestana) {
-                0 -> EditorTaller(
+            when {
+                pestana == 0 -> EditorTaller(
                     fuente = estado.fuente,
                     tokens = (estado.fases.getValue(Fase.LEXICA).artefacto as? Artefacto.Lexico)?.tokens,
                     diagnosticos = estado.diagnosticos,
                     seleccion = estado.seleccion,
                     onCambio = controlador::cambiarFuente,
+                    tamanioFuente = tamanioFuente,
+                    alCambiarTamanio = alCambiarTamanio,
+                    alDeshacer = controlador::deshacer,
+                    alRehacer = controlador::rehacer,
                     modifier = contenido
                 )
-                in 1..5 -> PanelFase(
+                // En modo simple la pestaña 1 es la Consola directamente.
+                simple -> ConsolaTaller(
+                    salida = estado.salida,
+                    pidiendoEntrada = estado.pidiendoEntrada,
+                    terminado = estado.terminado,
+                    exito = estado.exito,
+                    onEnviar = controlador::enviarEntrada,
+                    modifier = contenido
+                )
+                pestana in 1..5 -> PanelFase(
                     indice = pestana - 1,
                     estado = estado,
                     onSeleccionar = controlador::seleccionar,
                     modifier = contenido
                 )
-                6 -> PanelProblemas(
+                pestana == 6 -> PanelProblemas(
                     fases = estado.fases,
                     onSeleccionar = controlador::seleccionar,
                     modifier = contenido

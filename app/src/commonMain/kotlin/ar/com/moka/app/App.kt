@@ -25,13 +25,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import ar.com.moka.app.ajustes.recordarAjustesMoka
 import ar.com.moka.app.archivos.SesionArchivoMoka
 import ar.com.moka.app.estado.MokaControlador
 import ar.com.moka.app.ui.LocalColoresEditor
+import ar.com.moka.app.ui.ModoTaller
 import ar.com.moka.app.ui.Taller
 import ar.com.moka.app.ui.coloresEditorMoka
 import ar.com.moka.app.ui.esquemaClaroMoka
@@ -51,7 +54,17 @@ fun App(
         onDispose { controlador.liberar() }
     }
 
-    var tema by rememberSaveable { mutableStateOf(TemaMoka.SISTEMA) }
+    // Tema y modo se leen del almacenamiento de la plataforma y se
+    // guardan a cada cambio: sobreviven al cierre de la app. El tamaño
+    // de fuente solo se mantiene al rotar (rememberSaveable).
+    val ajustes = recordarAjustesMoka()
+    var tema by rememberSaveable {
+        mutableStateOf(ajustes.leer("tema")?.let { runCatching { TemaMoka.valueOf(it) }.getOrNull() } ?: TemaMoka.SISTEMA)
+    }
+    var modo by rememberSaveable {
+        mutableStateOf(ajustes.leer("modo")?.let { runCatching { ModoTaller.valueOf(it) }.getOrNull() } ?: ModoTaller.COMPLETO)
+    }
+    var tamanioFuente by rememberSaveable { mutableIntStateOf(14) }
     val oscuro = when (tema) {
         TemaMoka.SISTEMA -> isSystemInDarkTheme()
         TemaMoka.CLARO -> false
@@ -67,7 +80,17 @@ fun App(
                     sesionArchivo = sesionArchivo,
                     alSalir = alSalir,
                     tema = tema,
-                    alCambiarTema = { tema = it }
+                    alCambiarTema = {
+                        tema = it
+                        ajustes.escribir("tema", it.name)
+                    },
+                    modo = modo,
+                    alCambiarModo = {
+                        modo = it
+                        ajustes.escribir("modo", it.name)
+                    },
+                    tamanioFuente = tamanioFuente,
+                    alCambiarTamanio = { tamanioFuente = it.coerceIn(10, 28) }
                 )
             }
         }
