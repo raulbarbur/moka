@@ -88,8 +88,12 @@ fun PanelProblemas(
                 }
             }
 
-            // Filtro por severidad.
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Filtro por severidad. Tambien con scroll: sin el, en un
+            // telefono horizontal "Solo advertencias" se partia por letra.
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 FilterChip(
                     selected = severidadFiltro == null,
                     onClick = { severidadFiltro = null },

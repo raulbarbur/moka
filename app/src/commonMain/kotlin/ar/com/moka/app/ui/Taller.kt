@@ -44,6 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import ar.com.moka.app.TemaMoka
+import ar.com.moka.app.archivos.SesionArchivoMoka
 import ar.com.moka.app.estado.EstadoWorkbench
 import ar.com.moka.app.estado.MokaControlador
 import ar.com.moka.core.pipeline.Artefacto
@@ -52,6 +54,10 @@ import ar.com.moka.core.pipeline.Fase
 // Umbral de modo: menos que esto se considera angosto. Es un valor de
 // ancho logico, no de pixeles fisicos, asi que sirve en ambas plataformas.
 private val ANCHO_MINIMO_MUELLES = 840.dp
+// Un telefono en horizontal puede superar los 840.dp de ancho con solo
+// ~360-410.dp de alto: ahi la franja fija de 220.dp de Problemas/Consola
+// no deja lugar al editor. Los muelles tambien exigen altura minima.
+private val ALTURA_MINIMA_MUELLES = 480.dp
 private val ALTURA_FRANJA_INFERIOR = 220.dp
 
 // En modo angosto la pantalla entera se organiza como una sola fila de
@@ -60,12 +66,20 @@ private val PESTANAS_ANGOSTAS =
     listOf("Codigo") + PESTANAS_FASES + listOf("Problemas", "Consola")
 
 @Composable
-fun Taller(controlador: MokaControlador) {
+fun Taller(
+    controlador: MokaControlador,
+    sesionArchivo: SesionArchivoMoka,
+    alSalir: () -> Unit,
+    tema: TemaMoka,
+    alCambiarTema: (TemaMoka) -> Unit
+) {
     val estado by controlador.estado.collectAsState()
 
-    ArchivoTaller(controlador) {
+    ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val angosto = maxWidth < ANCHO_MINIMO_MUELLES
+            // Angosto por ancho O por altura: landscape de telefono cae
+            // en pestañas aunque su ancho parezca de tablet.
+            val angosto = maxWidth < ANCHO_MINIMO_MUELLES || maxHeight < ALTURA_MINIMA_MUELLES
             Column(Modifier.fillMaxSize()) {
                 BarraAcciones(controlador, angosto)
                 BarraDepuracion(controlador)
@@ -78,6 +92,7 @@ fun Taller(controlador: MokaControlador) {
                     ContenidoPorPestanas(
                         estado = estado,
                         controlador = controlador,
+                        modificado = sesionArchivo.hayCambios(estado.fuente),
                         modifier = Modifier.weight(1f)
                     )
                 } else {
@@ -169,6 +184,7 @@ private fun ContenidoConMuelles(
 private fun ContenidoPorPestanas(
     estado: EstadoWorkbench,
     controlador: MokaControlador,
+    modificado: Boolean,
     modifier: Modifier = Modifier
 ) {
     var pestana by remember { mutableIntStateOf(0) }
@@ -180,10 +196,13 @@ private fun ContenidoPorPestanas(
             edgePadding = 8.dp
         ) {
             PESTANAS_ANGOSTAS.forEachIndexed { indice, titulo ->
+                // El asterisco de modificado tambien en la pestaña Codigo:
+                // en modo pestañas la barra de archivo puede quedar lejos.
+                val rotulo = if (indice == 0 && modificado) "$titulo *" else titulo
                 Tab(
                     selected = pestana == indice,
                     onClick = { pestana = indice },
-                    text = { Text(titulo) }
+                    text = { Text(rotulo) }
                 )
             }
         }

@@ -1,35 +1,69 @@
 // =======================================================================
-//  App.kt — Raiz de la UI (reemplaza la pantalla demo de la Fase 0)
+//  App.kt - Raiz de la UI y del tema
 // =======================================================================
-//  Crea el controlador UNA vez por pantalla (remember), lo libera cuando
-//  la pantalla se destruye (DisposableEffect) y monta el Taller. Nada
-//  mas: la UI de verdad vive en ui/ y la logica de estado en estado/.
+//  Recibe el controlador y la sesion de archivo desde la entrada de cada
+//  plataforma. Eso permite que desktop/Android pregunten si el cierre es
+//  seguro ANTES de destruir la ventana/Activity.
 //
-//  A partir de aca la app ya no usa el object Moka de la Fase 0
-//  (ar.com.moka.core.Moka): habla con el nucleo solo por la fachada
-//  pipeline.Moka, a traves del controlador.
+//  Aqui tambien vive el tema claro/oscuro. El estado usa
+//  rememberSaveable: si Android recrea la Activity al girar el telefono,
+//  la eleccion sobrevive. El selector se dibuja en la barra de archivo
+//  (ArchivoTaller), pero el color se aplica aca, en el MaterialTheme que
+//  envuelve TODO: asi ningun panel puede quedar con el tema viejo.
+//
+//  App sigue siendo fina: libera el controlador al salir de composicion,
+//  aplica el tema y monta el Taller. La logica del pipeline vive en
+//  estado/ y la del documento en archivos/SesionArchivoMoka.
 // =======================================================================
 package ar.com.moka.app
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import ar.com.moka.app.archivos.SesionArchivoMoka
 import ar.com.moka.app.estado.MokaControlador
 import ar.com.moka.app.ui.Taller
 
+// Las tres opciones del selector de tema. SISTEMA sigue al telefono o al
+// escritorio; CLARO y OSCURO fuerzan la eleccion del usuario.
+enum class TemaMoka { SISTEMA, CLARO, OSCURO }
+
 @Composable
-fun App() {
-    val controlador = remember { MokaControlador() }
-    DisposableEffect(Unit) {
+fun App(
+    controlador: MokaControlador,
+    sesionArchivo: SesionArchivoMoka,
+    alSalir: () -> Unit
+) {
+    DisposableEffect(controlador) {
         onDispose { controlador.liberar() }
     }
-    MaterialTheme {
+
+    var tema by rememberSaveable { mutableStateOf(TemaMoka.SISTEMA) }
+    val oscuro = when (tema) {
+        TemaMoka.SISTEMA -> isSystemInDarkTheme()
+        TemaMoka.CLARO -> false
+        TemaMoka.OSCURO -> true
+    }
+
+    MaterialTheme(colorScheme = if (oscuro) darkColorScheme() else lightColorScheme()) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Taller(controlador)
+            Taller(
+                controlador = controlador,
+                sesionArchivo = sesionArchivo,
+                alSalir = alSalir,
+                tema = tema,
+                alCambiarTema = { tema = it }
+            )
         }
     }
 }
