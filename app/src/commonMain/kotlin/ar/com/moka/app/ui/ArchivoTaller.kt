@@ -342,8 +342,9 @@ private fun gruposDeMenu(
             ItemMenu("Buscar y reemplazar", atajo = "Ctrl+F", marcado = busquedaActiva, accion = alAlternarBusqueda),
             ItemMenu("Autocompletado", marcado = autocompletado, accion = alAlternarAutocompletado),
             SeparadorMenu,
-            ItemMenu("Letra mas grande (A+)", habilitado = tamanioFuente < 28) { alCambiarTamanio(tamanioFuente + 2) },
-            ItemMenu("Letra mas chica (A-)", habilitado = tamanioFuente > 10) { alCambiarTamanio(tamanioFuente - 2) }
+            // No cierran el menu: agrandar/achicar se toca varias veces.
+            ItemMenu("Letra mas grande (A+)", habilitado = tamanioFuente < 28, cierraAlAccionar = false) { alCambiarTamanio(tamanioFuente + 2) },
+            ItemMenu("Letra mas chica (A-)", habilitado = tamanioFuente > 10, cierraAlAccionar = false) { alCambiarTamanio(tamanioFuente - 2) }
         )
     )
     val ver = GrupoMenu(

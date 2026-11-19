@@ -19,6 +19,8 @@
 // =======================================================================
 package ar.com.moka.app.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Box
@@ -38,21 +40,20 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import ar.com.moka.app.TemaMoka
-import ar.com.moka.app.ajustes.recordarAjustesMoka
 import ar.com.moka.app.archivos.SesionArchivoMoka
 import ar.com.moka.app.estado.EstadoWorkbench
 import ar.com.moka.app.estado.MokaControlador
-import ar.com.moka.core.ast.Posicion
 import ar.com.moka.core.pipeline.Artefacto
 import ar.com.moka.core.pipeline.Fase
 
@@ -90,90 +91,64 @@ fun Taller(
 ) {
     val estado by controlador.estado.collectAsState()
 
-    // Estado compartido del editor, repartido por CompositionLocal para que
-    // los menus (ArchivoTaller) y el editor se hablen sin parametros extra.
-    val ajustes = recordarAjustesMoka()
-    val busqueda = remember { EstadoBusqueda() }
-    val opciones = remember { OpcionesEditor().apply { autocompletado = ajustes.leer("autocompletado") != "no" } }
-    val salto = remember { PedidoSalto() }
+    ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema, modo, alCambiarModo, tamanioFuente, alCambiarTamanio) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            // Angosto por ancho O por altura: landscape de telefono cae
+            // en pestañas aunque su ancho parezca de tablet.
+            val angosto = maxWidth < ANCHO_MINIMO_MUELLES || maxHeight < ALTURA_MINIMA_MUELLES
+            val simple = modo == ModoTaller.SIMPLE
+            Column(Modifier.fillMaxSize()) {
+                BarraAcciones(controlador, angosto || simple, simple)
+                if (!simple) {
+                    BarraDepuracion(controlador)
 
-    CompositionLocalProvider(
-        LocalBusquedaEditor provides busqueda,
-        LocalOpcionesEditor provides opciones,
-        LocalSaltoEditor provides salto
-    ) {
-        ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema, modo, alCambiarModo, tamanioFuente, alCambiarTamanio) {
-            BoxWithConstraints(Modifier.fillMaxSize()) {
-                // Angosto por ancho O por altura: landscape de telefono cae
-                // en pestañas aunque su ancho parezca de tablet.
-                val angosto = maxWidth < ANCHO_MINIMO_MUELLES || maxHeight < ALTURA_MINIMA_MUELLES
-                val simple = modo == ModoTaller.SIMPLE
-                Column(Modifier.fillMaxSize()) {
-                    BarraAcciones(controlador, angosto || simple)
-                    if (!simple) {
-                        BarraDepuracion(controlador)
+                    // La tira de fases queda en TODOS los tamaños: en
+                    // angosta se vuelve desplazable para no comprimir sus
+                    // cinco chips.
+                    BarraFases(estado.fases, compacta = angosto)
+                }
 
-                        // La tira de fases queda en TODOS los tamaños: en
-                        // angosta se vuelve desplazable para no comprimir sus
-                        // cinco chips.
-                        BarraFases(estado.fases, compacta = angosto)
-                    }
-
-                    if (simple) {
-                        ContenidoPorPestanas(
-                            estado = estado,
-                            controlador = controlador,
-                            modificado = sesionArchivo.hayCambios(estado.fuente),
-                            pestanas = PESTANAS_SIMPLES,
-                            simple = true,
-                            tamanioFuente = tamanioFuente,
-                            alCambiarTamanio = alCambiarTamanio,
-                            modifier = Modifier.weight(1f)
-                        )
-                    } else if (angosto) {
-                        ContenidoPorPestanas(
-                            estado = estado,
-                            controlador = controlador,
-                            modificado = sesionArchivo.hayCambios(estado.fuente),
-                            pestanas = PESTANAS_ANGOSTAS,
-                            simple = false,
-                            tamanioFuente = tamanioFuente,
-                            alCambiarTamanio = alCambiarTamanio,
-                            modifier = Modifier.weight(1f)
-                        )
-                    } else {
-                        ContenidoConMuelles(
-                            estado = estado,
-                            controlador = controlador,
-                            tamanioFuente = tamanioFuente,
-                            alCambiarTamanio = alCambiarTamanio,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                if (simple) {
+                    ContenidoSimple(
+                        estado = estado,
+                        controlador = controlador,
+                        tamanioFuente = tamanioFuente,
+                        alCambiarTamanio = alCambiarTamanio,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else if (angosto) {
+                    ContenidoPorPestanas(
+                        estado = estado,
+                        controlador = controlador,
+                        modificado = sesionArchivo.hayCambios(estado.fuente),
+                        pestanas = PESTANAS_ANGOSTAS,
+                        simple = false,
+                        tamanioFuente = tamanioFuente,
+                        alCambiarTamanio = alCambiarTamanio,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    ContenidoConMuelles(
+                        estado = estado,
+                        controlador = controlador,
+                        tamanioFuente = tamanioFuente,
+                        alCambiarTamanio = alCambiarTamanio,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
     }
 }
 
-// Seleccionar una posicion (error, token, nodo) y pedirle al editor que
-// se desplace hasta ahi, incluso si es la misma posicion de la vez anterior.
-@Composable
-private fun rememberSeleccionar(controlador: MokaControlador): (Posicion?) -> Unit {
-    val salto = LocalSaltoEditor.current
-    return remember(controlador, salto) {
-        { pos: Posicion? ->
-            salto.version++
-            controlador.seleccionar(pos)
-        }
-    }
-}
-
 // Botones del pipeline. En pantalla angosta se omite el titulo "Moka":
-// el ancho libre queda para los tres botones, que entran en un telefono
+// el ancho libre queda para los botones, que entran en un telefono
 // comun de 320.dp sin necesidad de una segunda fila.
+// En modo simple tampoco aparece "Paso a paso": es una herramienta de
+// depuracion ligada a los paneles de TAC y Ejecucion, que ese modo no
+// muestra; dejarlo sugeriria una funcion sin donde observarla.
 @Composable
-private fun BarraAcciones(controlador: MokaControlador, angosto: Boolean) {
+private fun BarraAcciones(controlador: MokaControlador, angosto: Boolean, simple: Boolean) {
     Row(
         modifier = Modifier.fillMaxWidth()
             .horizontalScroll(rememberScrollState())
@@ -185,16 +160,49 @@ private fun BarraAcciones(controlador: MokaControlador, angosto: Boolean) {
             Spacer(Modifier.width(24.dp))
         }
         Button(onClick = controlador::ejecutar) { Text("Ejecutar") }
-        Spacer(Modifier.width(8.dp))
-        Button(onClick = controlador::ejecutarPasoAPaso) { Text("Paso a paso") }
+        if (!simple) {
+            Spacer(Modifier.width(8.dp))
+            Button(onClick = controlador::ejecutarPasoAPaso) { Text("Paso a paso") }
+        }
         Spacer(Modifier.width(8.dp))
         Button(onClick = controlador::detener) { Text("Detener") }
     }
 }
 
-// Layout historico de escritorio: dos muelles principales arriba y dos
-// muelles fijos abajo. Se conserva igual para no cambiar la experiencia
-// que ya quedo validada en las fases anteriores.
+// Divisores arrastrables (5A). Cada uno reporta el delta en pixeles y
+// quien lo contiene lo convierte en fraccion; asi las cuatro secciones
+// (codigo, paneles, consola, problemas) se redimensionan a gusto. La
+// franja fina del medio es la zona de agarre: 9.dp totales.
+@Composable
+private fun DivisorVertical(onArrastre: (Float) -> Unit) {
+    Box(
+        Modifier.fillMaxHeight().width(9.dp)
+            .pointerInput(Unit) { detectDragGestures { cambio, delta -> cambio.consume(); onArrastre(delta.x) } }
+    ) {
+        Box(Modifier.align(Alignment.Center).fillMaxHeight().width(1.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant))
+    }
+}
+
+@Composable
+private fun DivisorHorizontal(onArrastre: (Float) -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().height(9.dp)
+            .pointerInput(Unit) { detectDragGestures { cambio, delta -> cambio.consume(); onArrastre(delta.y) } }
+    ) {
+        Box(Modifier.align(Alignment.Center).fillMaxWidth().height(1.dp)
+            .background(MaterialTheme.colorScheme.outlineVariant))
+    }
+}
+
+// Limites de las fracciones: ninguna seccion desaparece del todo, siempre
+// queda un borde para volver a agarrar el divisor.
+private const val FRACCION_MINIMA = 0.06f
+private const val FRACCION_MAXIMA = 0.94f
+
+// Layout de escritorio: codigo | paneles arriba, consola | problemas
+// abajo (5A: la consola va a la IZQUIERDA y los problemas a la derecha),
+// con divisores arrastrables entre las cuatro secciones.
 @Composable
 private fun ContenidoConMuelles(
     estado: EstadoWorkbench,
@@ -203,9 +211,80 @@ private fun ContenidoConMuelles(
     alCambiarTamanio: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier.fillMaxWidth()) {
-        // ---- editor | paneles de fase ----
-        Row(Modifier.fillMaxWidth().weight(1f).padding(top = 8.dp)) {
+    var fraccionArriba by remember { mutableFloatStateOf(0.68f) }
+    var fraccionEditor by remember { mutableFloatStateOf(0.5f) }
+    var fraccionConsola by remember { mutableFloatStateOf(0.5f) }
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val anchoPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
+        val altoPx = constraints.maxHeight.toFloat().coerceAtLeast(1f)
+        Column(Modifier.fillMaxSize()) {
+            // ---- editor | paneles de fase ----
+            Row(Modifier.fillMaxWidth().weight(fraccionArriba).padding(top = 8.dp)) {
+                EditorTaller(
+                    fuente = estado.fuente,
+                    tokens = (estado.fases.getValue(Fase.LEXICA).artefacto as? Artefacto.Lexico)?.tokens,
+                    diagnosticos = estado.diagnosticos,
+                    seleccion = estado.seleccion,
+                    onCambio = controlador::cambiarFuente,
+                    tamanioFuente = tamanioFuente,
+                    alCambiarTamanio = alCambiarTamanio,
+                    alDeshacer = controlador::deshacer,
+                    alRehacer = controlador::rehacer,
+                    modifier = Modifier.weight(fraccionEditor).fillMaxHeight().padding(start = 12.dp, bottom = 4.dp)
+                )
+                DivisorVertical { delta ->
+                    fraccionEditor = (fraccionEditor + delta / anchoPx).coerceIn(FRACCION_MINIMA, FRACCION_MAXIMA)
+                }
+                PanelesTaller(
+                    estado = estado,
+                    onSeleccionar = controlador::seleccionar,
+                    modifier = Modifier.weight(1f - fraccionEditor).fillMaxHeight()
+                        .padding(end = 12.dp, bottom = 4.dp)
+                )
+            }
+            DivisorHorizontal { delta ->
+                fraccionArriba = (fraccionArriba + delta / altoPx).coerceIn(FRACCION_MINIMA, FRACCION_MAXIMA)
+            }
+            // ---- consola | problemas ----
+            Row(Modifier.fillMaxWidth().weight(1f - fraccionArriba)) {
+                ConsolaTaller(
+                    salida = estado.salida,
+                    pidiendoEntrada = estado.pidiendoEntrada,
+                    terminado = estado.terminado,
+                    exito = estado.exito,
+                    onEnviar = controlador::enviarEntrada,
+                    modifier = Modifier.weight(fraccionConsola).fillMaxHeight()
+                        .padding(start = 12.dp, bottom = 8.dp)
+                )
+                DivisorVertical { delta ->
+                    fraccionConsola = (fraccionConsola + delta / anchoPx).coerceIn(FRACCION_MINIMA, FRACCION_MAXIMA)
+                }
+                PanelProblemas(
+                    fases = estado.fases,
+                    onSeleccionar = controlador::seleccionar,
+                    modifier = Modifier.weight(1f - fraccionConsola).fillMaxHeight()
+                        .padding(end = 12.dp, bottom = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+// Modo simple (5A): codigo arriba y consola abajo, sin pestañas, con un
+// divisor arrastrable entre las dos. La consola a la vista todo el tiempo
+// es lo que hace util al modo para aprender.
+@Composable
+private fun ContenidoSimple(
+    estado: EstadoWorkbench,
+    controlador: MokaControlador,
+    tamanioFuente: Int,
+    alCambiarTamanio: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var fraccionCodigo by remember { mutableFloatStateOf(0.62f) }
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val altoPx = constraints.maxHeight.toFloat().coerceAtLeast(1f)
+        Column(Modifier.fillMaxSize()) {
             EditorTaller(
                 fuente = estado.fuente,
                 tokens = (estado.fases.getValue(Fase.LEXICA).artefacto as? Artefacto.Lexico)?.tokens,
@@ -216,32 +295,20 @@ private fun ContenidoConMuelles(
                 alCambiarTamanio = alCambiarTamanio,
                 alDeshacer = controlador::deshacer,
                 alRehacer = controlador::rehacer,
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(start = 12.dp, bottom = 8.dp)
+                modifier = Modifier.fillMaxWidth().weight(fraccionCodigo)
+                    .padding(start = 12.dp, end = 12.dp, top = 8.dp)
             )
-            PanelesTaller(
-                estado = estado,
-                onSeleccionar = rememberSeleccionar(controlador),
-                modifier = Modifier.weight(1f).fillMaxHeight()
-                    .padding(start = 8.dp, end = 12.dp, bottom = 8.dp)
-            )
-        }
-
-        // ---- problemas | consola ----
-        Row(Modifier.fillMaxWidth().height(ALTURA_FRANJA_INFERIOR)) {
-            PanelProblemas(
-                fases = estado.fases,
-                onSeleccionar = rememberSeleccionar(controlador),
-                modifier = Modifier.weight(1f).fillMaxHeight()
-                    .padding(start = 12.dp, end = 4.dp, bottom = 8.dp)
-            )
+            DivisorHorizontal { delta ->
+                fraccionCodigo = (fraccionCodigo + delta / altoPx).coerceIn(0.25f, FRACCION_MAXIMA)
+            }
             ConsolaTaller(
                 salida = estado.salida,
                 pidiendoEntrada = estado.pidiendoEntrada,
                 terminado = estado.terminado,
                 exito = estado.exito,
                 onEnviar = controlador::enviarEntrada,
-                modifier = Modifier.weight(1f).fillMaxHeight()
-                    .padding(start = 4.dp, end = 12.dp, bottom = 8.dp)
+                modifier = Modifier.fillMaxWidth().weight(1f - fraccionCodigo)
+                    .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
             )
         }
     }
@@ -309,12 +376,12 @@ private fun ContenidoPorPestanas(
                 pestana in 1..5 -> PanelFase(
                     indice = pestana - 1,
                     estado = estado,
-                    onSeleccionar = rememberSeleccionar(controlador),
+                    onSeleccionar = controlador::seleccionar,
                     modifier = contenido
                 )
                 pestana == 6 -> PanelProblemas(
                     fases = estado.fases,
-                    onSeleccionar = rememberSeleccionar(controlador),
+                    onSeleccionar = controlador::seleccionar,
                     modifier = contenido
                 )
                 else -> ConsolaTaller(

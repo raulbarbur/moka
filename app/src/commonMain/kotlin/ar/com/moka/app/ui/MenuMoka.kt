@@ -38,6 +38,9 @@ class ItemMenu(
     val atajo: String? = null,
     val habilitado: Boolean = true,
     val marcado: Boolean = false,
+    // false para acciones que se repiten varias veces seguidas (A+/A-):
+    // el menu queda abierto y se puede volver a tocar el mismo item.
+    val cierraAlAccionar: Boolean = true,
     val accion: () -> Unit
 ) : EntradaMenu
 
@@ -67,7 +70,7 @@ fun BarraMenus(grupos: List<GrupoMenu>, modifier: Modifier = Modifier) {
                                 },
                                 enabled = entrada.habilitado,
                                 onClick = {
-                                    abierto = false
+                                    if (entrada.cierraAlAccionar) abierto = false
                                     entrada.accion()
                                 }
                             )

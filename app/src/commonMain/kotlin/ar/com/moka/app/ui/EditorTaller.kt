@@ -48,6 +48,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -125,10 +133,61 @@ fun EditorTaller(
     val foco = remember { FocusRequester() }
     val altoLinea = (tamanioFuente * 1.3).sp
     val altoLineaPx = with(LocalDensity.current) { altoLinea.toPx() }
-    LaunchedEffect(seleccion) {
+    // Disposicion real del texto (con saltos de linea visuales). Sirve para
+    // dos cosas: llevar el scroll a la linea correcta aunque haya lineas
+    // largas partidas en dos, y alinear los numeros de linea con ellas.
+    var disposicion by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val salto = LocalSaltoEditor.current
+    // La clave incluye 'salto.version': tocar OTRA VEZ el mismo error
+    // (misma posicion) tambien vuelve a desplazar, aunque el usuario haya
+    // movido el scroll a mano entre toque y toque.
+    LaunchedEffect(seleccion, salto.version) {
         if (seleccion != null) {
-            desplazamiento.scrollTo(((seleccion.linea - 1) * altoLineaPx).toInt().coerceAtLeast(0))
+            val dis = disposicion
+            val destino = if (dis != null && dis.layoutInput.text.length == fuente.length && dis.lineCount > 0) {
+                val inicio = inicioDeLinea(fuente, seleccion.linea)
+                dis.getLineTop(dis.getLineForOffset(inicio.coerceIn(0, fuente.length)))
+            } else {
+                (seleccion.linea - 1) * altoLineaPx
+            }
+            // Dos lineas de aire arriba para ver el contexto del error.
+            desplazamiento.scrollTo((destino - 2 * altoLineaPx).toInt().coerceAtLeast(0))
         }
+    }
+
+    // ---- Texto con cursor + autocompletado ----
+    // El campo trabaja con TextFieldValue (necesitamos el cursor); la
+    // fuente "oficial" sigue siendo la del controlador. Si cambia desde
+    // afuera (deshacer, abrir archivo, reemplazar) se adopta; los textos
+    // que enviamos nosotros y todavia no volvieron no cuentan como cambio
+    // externo, para no pisar lo que se esta tipeando.
+    var valor by remember { mutableStateOf(TextFieldValue(fuente)) }
+    val enviados = remember { ArrayDeque<String>() }
+    if (valor.text == fuente) {
+        enviados.clear()
+    } else if (fuente !in enviados) {
+        valor = TextFieldValue(fuente, TextRange(fuente.length))
+    }
+    fun cambiar(nuevo: TextFieldValue) {
+        valor = nuevo
+        if (nuevo.text != fuente) {
+            enviados.addLast(nuevo.text)
+            while (enviados.size > 8) enviados.removeFirst()
+            onCambio(nuevo.text)
+        }
+    }
+    val opciones = LocalOpcionesEditor.current
+    var descartado by remember { mutableStateOf<String?>(null) }
+    val claveActual = valor.text + "|" + valor.selection.start
+    val prefijo = if (opciones.autocompletado && valor.selection.collapsed && descartado != claveActual) {
+        Autocompletado.prefijoEn(valor.text, valor.selection.start)
+    } else null
+    val sugerencias = if (prefijo != null) Autocompletado.sugerir(valor.text, valor.selection.start) else emptyList()
+    fun aceptar(palabra: String) {
+        val p = prefijo ?: return
+        val (texto, cursor) = Autocompletado.aceptar(valor.text, p, palabra)
+        cambiar(TextFieldValue(texto, TextRange(cursor)))
+        foco.requestFocus()
     }
 
     val estiloCodigo = TextStyle(
@@ -195,7 +254,7 @@ fun EditorTaller(
             }
             // El alto del VIEWPORT se toma afuera del scroll: adentro el
             // maximo es infinito y no sirve para minHeight.
-            BoxWithConstraints(Modifier.fillMaxSize()) {
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 val altoPanel = this.maxHeight
                 Column(
                     Modifier.fillMaxSize()
@@ -210,22 +269,71 @@ fun EditorTaller(
                     // zona de toque/edicion ocupa todo el panel.
                     Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = altoPanel)) {
                         Text(
-                            (1..totalLineas).joinToString("\n"),
+                            numerosDeLinea(fuente, disposicion, totalLineas),
                             style = estiloCodigo.copy(color = coloresEditor.delimitador),
                             textAlign = TextAlign.End
                         )
                         Spacer(Modifier.width(10.dp))
                         BasicTextField(
-                            value = fuente,
-                            onValueChange = onCambio,
+                            value = valor,
+                            onValueChange = ::cambiar,
                             visualTransformation = transformacion,
                             textStyle = estiloCodigo,
+                            onTextLayout = { disposicion = it },
                             modifier = Modifier.fillMaxWidth().focusRequester(foco)
+                                .onPreviewKeyEvent { evento ->
+                                    // Escritorio: Tab acepta la primera sugerencia, Esc la oculta.
+                                    if (evento.type != KeyEventType.KeyDown || sugerencias.isEmpty()) false
+                                    else when (evento.key) {
+                                        Key.Tab -> { aceptar(sugerencias.first()); true }
+                                        Key.Escape -> { descartado = claveActual; true }
+                                        else -> false
+                                    }
+                                }
                         )
                     }
                 }
             }
+            // Tira de sugerencias: va debajo del editor y no tapa el texto;
+            // un toque acepta la palabra (sirve igual con teclado tactil).
+            if (sugerencias.isNotEmpty()) {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    for (palabra in sugerencias) {
+                        TextButton(onClick = { aceptar(palabra) }) { Text(palabra) }
+                    }
+                }
+            }
         }
+    }
+}
+
+// Desplazamiento del inicio de la linea 'linea' (1-based) dentro de la fuente.
+private fun inicioDeLinea(fuente: String, linea: Int): Int {
+    var restantes = linea - 1
+    var i = 0
+    while (restantes > 0) {
+        val salto = fuente.indexOf('\n', i)
+        if (salto < 0) return fuente.length
+        i = salto + 1
+        restantes--
+    }
+    return i
+}
+
+// Columna de numeros: uno por linea del programa. Si una linea larga se
+// parte en varias lineas visuales, el numero va en la primera y las demas
+// quedan en blanco, asi los numeros siguen alineados con el texto.
+private fun numerosDeLinea(fuente: String, dis: TextLayoutResult?, totalLineas: Int): String {
+    if (dis == null || dis.layoutInput.text.length != fuente.length || dis.lineCount <= totalLineas) {
+        return (1..totalLineas).joinToString("\n")
+    }
+    var numero = 0
+    return (0 until dis.lineCount).joinToString("\n") { v ->
+        val inicio = dis.getLineStart(v)
+        if (inicio == 0 || fuente[inicio - 1] == '\n') { numero++; numero.toString() } else ""
     }
 }
 
