@@ -1,5 +1,7 @@
 // AjustesMoka.kt - Preferencias chicas que sobreviven al cierre.
-// Hoy: tema y modo (simple/completo). Clave/valor alcanza; cada
+// Hoy: tema, modo (simple/completo), autocompletado y, desde 5C, el
+// tamano de letra y la visibilidad de cada panel (claves "tam.<id>" y
+// "panel.<id>", ver ui/EstadoPaneles.kt). Clave/valor alcanza; cada
 // plataforma elige su almacenamiento.
 package ar.com.moka.app.ajustes
 

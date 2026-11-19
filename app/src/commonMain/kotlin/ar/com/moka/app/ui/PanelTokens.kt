@@ -53,6 +53,8 @@ fun PanelTokens(
     lexico: Artefacto.Lexico?,
     seleccion: Posicion?,
     onSeleccionar: (Posicion) -> Unit,
+    // 5C: tamano de letra propio del panel.
+    tamanio: Int,
     modifier: Modifier = Modifier
 ) {
     if (lexico == null) {
@@ -74,6 +76,9 @@ fun PanelTokens(
                             )
         }
     }
+
+    // La tabla usa esta fuente mono; el tamano es el del panel.
+    val mono = MONO_CHICO.copy(fontSize = tamanio.sp)
 
     Column(modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
         Text(
@@ -123,7 +128,8 @@ fun PanelTokens(
             categoria = "Categoria", pos = "Lin:Col",
             regla = if (mostrarRegla) "Regla" else null,
             esCabecera = true, esError = false, seleccionada = false,
-            onClick = null
+            onClick = null,
+            estilo = mono
         )
 
         LazyColumn(Modifier.fillMaxSize()) {
@@ -139,7 +145,8 @@ fun PanelTokens(
                     esCabecera = false,
                     esError = token.categoria == CategoriaToken.ERROR,
                     seleccionada = seleccionada,
-                    onClick = { onSeleccionar(token.pos) }
+                    onClick = { onSeleccionar(token.pos) },
+                    estilo = mono
                 )
             }
         }
@@ -158,7 +165,8 @@ private fun FilaToken(
     esCabecera: Boolean,
     esError: Boolean,
     seleccionada: Boolean,
-    onClick: (() -> Unit)?
+    onClick: (() -> Unit)?,
+    estilo: TextStyle
 ) {
     val color = when {
         esCabecera -> MaterialTheme.colorScheme.outline
@@ -169,13 +177,13 @@ private fun FilaToken(
     var fila = Modifier.fillMaxWidth().background(fondo)
     if (onClick != null) fila = fila.clickable { onClick() }
     Row(fila.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(nro, modifier = Modifier.width(36.dp), style = MONO_CHICO, color = color)
-        Text(lexema, modifier = Modifier.weight(1.2f), style = MONO_CHICO, color = color, maxLines = 1)
-        Text(tipo, modifier = Modifier.weight(1f), style = MONO_CHICO, color = color, maxLines = 1)
-        Text(categoria, modifier = Modifier.width(96.dp), style = MONO_CHICO, color = color, maxLines = 1)
-        Text(pos, modifier = Modifier.width(52.dp), style = MONO_CHICO, color = color)
+        Text(nro, modifier = Modifier.width(36.dp), style = estilo, color = color)
+        Text(lexema, modifier = Modifier.weight(1.2f), style = estilo, color = color, maxLines = 1)
+        Text(tipo, modifier = Modifier.weight(1f), style = estilo, color = color, maxLines = 1)
+        Text(categoria, modifier = Modifier.width(96.dp), style = estilo, color = color, maxLines = 1)
+        Text(pos, modifier = Modifier.width(52.dp), style = estilo, color = color)
         if (regla != null) {
-            Text(regla, modifier = Modifier.weight(1.2f), style = MONO_CHICO, color = color, maxLines = 1)
+            Text(regla, modifier = Modifier.weight(1.2f), style = estilo, color = color, maxLines = 1)
         }
     }
 }

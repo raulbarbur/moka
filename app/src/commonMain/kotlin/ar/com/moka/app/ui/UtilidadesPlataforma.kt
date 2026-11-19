@@ -4,12 +4,14 @@
 //  Dos piezas:
 //
 //    1. zoomConRueda: Ctrl + rueda del mouse cambia el tamano de letra.
-//       Funciona desde CUALQUIER panel (editor, consola, problemas,
-//       tokens, arbol, etc.) porque se engancha en la raiz del taller y
-//       lee el evento en el pase Initial, que baja de la raiz hacia el
-//       componente: con Ctrl apretado el evento se consume ahi y el
-//       panel NO se desplaza mientras se hace zoom; sin Ctrl, la rueda
-//       sigue su camino normal y el panel scrollea como siempre.
+//       En 5B era UN zoom global enganchado en la raiz del taller; desde
+//       5C se engancha por panel (Taller lo pone en el editor, la
+//       consola, los problemas y el panel de fase visible) y cada uno
+//       cambia solo su propio tamano (EstadoPaneles). La mecanica es la
+//       misma: lee el evento en el pase Initial, que baja de la raiz
+//       hacia el componente; con Ctrl apretado el evento se consume ahi
+//       y el panel NO se desplaza mientras se hace zoom; sin Ctrl, la
+//       rueda sigue su camino normal y el panel scrollea como siempre.
 //       (Reemplaza al atajo Ctrl+'+'/Ctrl+'-', que en escritorio
 //       ensuciaba el texto con el caracter tipeado.)
 //

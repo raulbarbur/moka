@@ -62,6 +62,8 @@ fun PanelTac(
     pasoActual: EventoEjecucion.Paso?,
     seleccion: Posicion?,
     onSeleccionar: (Posicion) -> Unit,
+    // 5C: tamano de letra propio del panel.
+    tamanio: Int,
     modifier: Modifier = Modifier
 ) {
     if (tac == null) {
@@ -69,6 +71,7 @@ fun PanelTac(
         return
     }
     val programa = tac.programa
+    val mono = MONO_CHICO.copy(fontSize = tamanio.sp)
     var vistaTexto by remember(programa) { mutableStateOf(false) }
 
     Column(modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
@@ -83,7 +86,7 @@ fun PanelTac(
         if (vistaTexto) {
             Text(
                 programa.comoTexto(),
-                style = MONO_CHICO,
+                style = mono,
                 modifier = Modifier.fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .horizontalScroll(rememberScrollState())
@@ -97,7 +100,8 @@ fun PanelTac(
                         c = c,
                         esActual = pasoActual?.pc == c.indice,
                         esDeLaSeleccion = seleccion != null && c.origen?.linea == seleccion.linea,
-                        onSeleccionar = onSeleccionar
+                        onSeleccionar = onSeleccionar,
+                        estilo = mono
                     )
                 }
             }
@@ -111,13 +115,14 @@ private fun FilaCuadrupla(
     c: Cuadrupla,
     esActual: Boolean,
     esDeLaSeleccion: Boolean,
-    onSeleccionar: (Posicion) -> Unit
+    onSeleccionar: (Posicion) -> Unit,
+    estilo: TextStyle
 ) {
     // Cabecera de funcion: no es una instruccion, marca el comienzo.
     if (c.op == Operacion.INICIO_FUNC) {
         Text(
             "funcion ${programa.textoDe(c.arg1)}",
-            style = MONO_CHICO,
+            style = estilo,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant)
@@ -141,17 +146,17 @@ private fun FilaCuadrupla(
         .padding(vertical = 1.dp, horizontal = 4.dp)
 
     Row(fila, verticalAlignment = Alignment.CenterVertically) {
-        Text("${c.indice}", modifier = Modifier.width(36.dp), style = MONO_CHICO, color = MaterialTheme.colorScheme.outline)
+        Text("${c.indice}", modifier = Modifier.width(36.dp), style = estilo, color = MaterialTheme.colorScheme.outline)
         Text(
             c.op.simbolo,
             modifier = Modifier.width(88.dp),
-            style = MONO_CHICO,
+            style = estilo,
             color = if (colorEtiqueta) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface
         )
-        Text(programa.textoDe(c.arg1), modifier = Modifier.weight(1f), style = MONO_CHICO, maxLines = 1)
-        Text(programa.textoDe(c.arg2), modifier = Modifier.weight(1f), style = MONO_CHICO, maxLines = 1)
+        Text(programa.textoDe(c.arg1), modifier = Modifier.weight(1f), style = estilo, maxLines = 1)
+        Text(programa.textoDe(c.arg2), modifier = Modifier.weight(1f), style = estilo, maxLines = 1)
         // Saltos: la etiqueta destino con flecha al indice que le toca.
-        Text(resultadoDe(programa, c), modifier = Modifier.weight(1f), style = MONO_CHICO, maxLines = 1)
+        Text(resultadoDe(programa, c), modifier = Modifier.weight(1f), style = estilo, maxLines = 1)
     }
 }
 

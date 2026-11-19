@@ -1,17 +1,21 @@
 // =======================================================================
 //  Taller.kt - La pantalla principal (sec. 5.2 y 5.5)
 // =======================================================================
-//  Version 7.11: layout adaptativo.
-//    - Pantalla ancha (desktop/tablet): muelles. Arriba el editor y los
-//      paneles de fase; abajo, siempre visibles, Problemas y Consola.
-//    - Pantalla angosta (telefono): TODAS las zonas pasan a pestañas.
-//      Asi Codigo, Tokens, Arbol, Semantica, TAC, Ejecucion, Problemas y
-//      Consola conservan su contenido sin pelear por el mismo ancho.
+//  Version 7.12: zoom y visibilidad POR PANEL (5C).
+//    - Ctrl + rueda cambia el tamano de letra del panel que esta bajo
+//      el mouse (editor, consola, problemas o el panel de fase visible),
+//      ya no el de todos a la vez. Cada panel recuerda su tamano en
+//      EstadoPaneles, que lo guarda en los ajustes de la plataforma.
+//    - El menu Ver -> Paneles prende y apaga paneles sueltos. Los
+//      layouts de abajo se arman con lo que queda visible: si no hay
+//      paneles de fase visibles el editor ocupa todo el ancho, y si se
+//      apagan consola y problemas la franja de abajo desaparece.
 //
-//  El corte usa 840.dp, el limite Material habitual entre una ventana
-//  compacta y una mediana. No pregunta por la plataforma: una ventana de
-//  escritorio achicada tambien usa pestañas, y una tablet/Android ancha
-//  usa muelles. Eso es justamente lo que pide la sec. 5.5.
+//  Layout adaptativo (sin cambios): pantalla ancha con muelles (editor
+//  y paneles arriba; consola y problemas abajo) y pantalla angosta con
+//  TODAS las zonas en pestañas. El corte usa 840.dp de ancho y 480.dp
+//  de alto, los limites Material habituales. No pregunta por la
+//  plataforma: una ventana achicada tambien usa pestañas.
 //
 //  Este composable NO decide ejecucion ni analisis: observa el StateFlow
 //  del controlador y reparte pedazos de estado. Toda la logica del
@@ -62,21 +66,14 @@ import ar.com.moka.core.pipeline.Fase
 // ancho logico, no de pixeles fisicos, asi que sirve en ambas plataformas.
 private val ANCHO_MINIMO_MUELLES = 840.dp
 // Un telefono en horizontal puede superar los 840.dp de ancho con solo
-// ~360-410.dp de alto: ahi la franja fija de 220.dp de Problemas/Consola
-// no deja lugar al editor. Los muelles tambien exigen altura minima.
+// ~360-410.dp de alto: ahi la franja fija de Problemas/Consola no deja
+// lugar al editor. Los muelles tambien exigen altura minima.
 private val ALTURA_MINIMA_MUELLES = 480.dp
-private val ALTURA_FRANJA_INFERIOR = 220.dp
-
-// En modo angosto la pantalla entera se organiza como una sola fila de
-// pestañas. Los nombres coinciden con los paneles de la sec. 5.3.
-private val PESTANAS_ANGOSTAS =
-    listOf("Codigo") + PESTANAS_FASES + listOf("Problemas", "Consola")
 
 // Modo simple: solo Codigo y Consola, sin fases ni paneles internos del
 // compilador. Pensado para quien solo quiere escribir y correr programas.
 // Los errores llegan igual a la Consola (salida del pipeline).
 enum class ModoTaller { COMPLETO, SIMPLE }
-private val PESTANAS_SIMPLES = listOf("Codigo", "Consola")
 
 @Composable
 fun Taller(
@@ -88,21 +85,18 @@ fun Taller(
     modo: ModoTaller,
     alCambiarModo: (ModoTaller) -> Unit,
     tamanioFuente: Int,
-    alCambiarTamanio: (Int) -> Unit
+    alCambiarTamanio: (Int) -> Unit,
+    paneles: EstadoPaneles
 ) {
     val estado by controlador.estado.collectAsState()
 
-    ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema, modo, alCambiarModo, tamanioFuente, alCambiarTamanio) {
+    ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema, modo, alCambiarModo, tamanioFuente, alCambiarTamanio, paneles) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             // Angosto por ancho O por altura: landscape de telefono cae
             // en pestañas aunque su ancho parezca de tablet.
             val angosto = maxWidth < ANCHO_MINIMO_MUELLES || maxHeight < ALTURA_MINIMA_MUELLES
             val simple = modo == ModoTaller.SIMPLE
-            Column(
-                // 5B: Ctrl + rueda del mouse cambia el tamano de letra
-                // desde cualquier panel (ver UtilidadesPlataforma).
-                Modifier.fillMaxSize().zoomConRueda { delta -> alCambiarTamanio(tamanioFuente + delta) }
-            ) {
+            Column(Modifier.fillMaxSize()) {
                 BarraAcciones(controlador, angosto || simple, simple)
                 if (!simple) {
                     BarraDepuracion(controlador)
@@ -119,6 +113,7 @@ fun Taller(
                         controlador = controlador,
                         tamanioFuente = tamanioFuente,
                         alCambiarTamanio = alCambiarTamanio,
+                        paneles = paneles,
                         modifier = Modifier.weight(1f)
                     )
                 } else if (angosto) {
@@ -126,10 +121,10 @@ fun Taller(
                         estado = estado,
                         controlador = controlador,
                         modificado = sesionArchivo.hayCambios(estado.fuente),
-                        pestanas = PESTANAS_ANGOSTAS,
                         simple = false,
                         tamanioFuente = tamanioFuente,
                         alCambiarTamanio = alCambiarTamanio,
+                        paneles = paneles,
                         modifier = Modifier.weight(1f)
                     )
                 } else {
@@ -138,6 +133,7 @@ fun Taller(
                         controlador = controlador,
                         tamanioFuente = tamanioFuente,
                         alCambiarTamanio = alCambiarTamanio,
+                        paneles = paneles,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -178,11 +174,12 @@ private fun BarraAcciones(controlador: MokaControlador, angosto: Boolean, simple
 // quien lo contiene lo convierte en fraccion; asi las cuatro secciones
 // (codigo, paneles, consola, problemas) se redimensionan a gusto. La
 // franja fina del medio es la zona de agarre: 9.dp totales.
+// 5B: cursor de flecha doble al pasar el mouse (horizontal en el divisor
+// vertical, vertical en el horizontal).
 @Composable
 private fun DivisorVertical(onArrastre: (Float) -> Unit) {
     Box(
         Modifier.fillMaxHeight().width(9.dp)
-            // 5B: cursor de flecha doble horizontal al pasar el mouse
             .pointerHoverIcon(cursorDivisorVertical())
             .pointerInput(Unit) { detectDragGestures { cambio, delta -> cambio.consume(); onArrastre(delta.x) } }
     ) {
@@ -195,7 +192,6 @@ private fun DivisorVertical(onArrastre: (Float) -> Unit) {
 private fun DivisorHorizontal(onArrastre: (Float) -> Unit) {
     Box(
         Modifier.fillMaxWidth().height(9.dp)
-            // 5B: cursor de flecha doble vertical al pasar el mouse
             .pointerHoverIcon(cursorDivisorHorizontal())
             .pointerInput(Unit) { detectDragGestures { cambio, delta -> cambio.consume(); onArrastre(delta.y) } }
     ) {
@@ -209,26 +205,49 @@ private fun DivisorHorizontal(onArrastre: (Float) -> Unit) {
 private const val FRACCION_MINIMA = 0.06f
 private const val FRACCION_MAXIMA = 0.94f
 
+// Zoom del editor con Ctrl + rueda: es el mismo tamano que mueven los
+// items A+/A- del menu Editar.
+private fun Modifier.zoomEditor(tamanioFuente: Int, alCambiarTamanio: (Int) -> Unit): Modifier =
+    zoomConRueda { delta -> alCambiarTamanio(tamanioFuente + delta) }
+
+// Zoom de un panel con Ctrl + rueda: cambia solo ESE panel (5C).
+private fun Modifier.zoomPanel(paneles: EstadoPaneles, panel: String): Modifier =
+    zoomConRueda { delta -> paneles.cambiarTamanio(panel, delta) }
+
 // Layout de escritorio: codigo | paneles arriba, consola | problemas
 // abajo (5A: la consola va a la IZQUIERDA y los problemas a la derecha),
 // con divisores arrastrables entre las cuatro secciones.
+// 5C: cada seccion puede estar apagada desde Ver -> Paneles. Sin paneles
+// de fase visibles el editor toma todo el ancho; sin consola NI problemas
+// la franja de abajo (y su divisor) desaparecen.
 @Composable
 private fun ContenidoConMuelles(
     estado: EstadoWorkbench,
     controlador: MokaControlador,
     tamanioFuente: Int,
     alCambiarTamanio: (Int) -> Unit,
+    paneles: EstadoPaneles,
     modifier: Modifier = Modifier
 ) {
     var fraccionArriba by remember { mutableFloatStateOf(0.68f) }
     var fraccionEditor by remember { mutableFloatStateOf(0.5f) }
     var fraccionConsola by remember { mutableFloatStateOf(0.5f) }
+
+    val hayPanelesFase = PANELES_CON_FASE.any(paneles::visible)
+    val hayConsola = paneles.visible(PANEL_CONSOLA)
+    val hayProblemas = paneles.visible(PANEL_PROBLEMAS)
+    val hayAbajo = hayConsola || hayProblemas
+
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val anchoPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
         val altoPx = constraints.maxHeight.toFloat().coerceAtLeast(1f)
         Column(Modifier.fillMaxSize()) {
             // ---- editor | paneles de fase ----
-            Row(Modifier.fillMaxWidth().weight(fraccionArriba).padding(top = 8.dp)) {
+            Row(
+                Modifier.fillMaxWidth()
+                    .weight(if (hayAbajo) fraccionArriba else 1f)
+                    .padding(top = 8.dp)
+            ) {
                 EditorTaller(
                     fuente = estado.fuente,
                     tokens = (estado.fases.getValue(Fase.LEXICA).artefacto as? Artefacto.Lexico)?.tokens,
@@ -239,41 +258,61 @@ private fun ContenidoConMuelles(
                     alCambiarTamanio = alCambiarTamanio,
                     alDeshacer = controlador::deshacer,
                     alRehacer = controlador::rehacer,
-                    modifier = Modifier.weight(fraccionEditor).fillMaxHeight().padding(start = 12.dp, bottom = 4.dp)
+                    modifier = Modifier.weight(if (hayPanelesFase) fraccionEditor else 1f)
+                        .fillMaxHeight()
+                        .padding(start = 12.dp, end = if (hayPanelesFase) 0.dp else 12.dp, bottom = 4.dp)
+                        .zoomEditor(tamanioFuente, alCambiarTamanio)
                 )
-                DivisorVertical { delta ->
-                    fraccionEditor = (fraccionEditor + delta / anchoPx).coerceIn(FRACCION_MINIMA, FRACCION_MAXIMA)
+                if (hayPanelesFase) {
+                    DivisorVertical { delta ->
+                        fraccionEditor = (fraccionEditor + delta / anchoPx).coerceIn(FRACCION_MINIMA, FRACCION_MAXIMA)
+                    }
+                    PanelesTaller(
+                        estado = estado,
+                        onSeleccionar = controlador::seleccionar,
+                        paneles = paneles,
+                        modifier = Modifier.weight(1f - fraccionEditor).fillMaxHeight()
+                            .padding(end = 12.dp, bottom = 4.dp)
+                    )
                 }
-                PanelesTaller(
-                    estado = estado,
-                    onSeleccionar = controlador::seleccionar,
-                    modifier = Modifier.weight(1f - fraccionEditor).fillMaxHeight()
-                        .padding(end = 12.dp, bottom = 4.dp)
-                )
             }
-            DivisorHorizontal { delta ->
-                fraccionArriba = (fraccionArriba + delta / altoPx).coerceIn(FRACCION_MINIMA, FRACCION_MAXIMA)
-            }
-            // ---- consola | problemas ----
-            Row(Modifier.fillMaxWidth().weight(1f - fraccionArriba)) {
-                ConsolaTaller(
-                    salida = estado.salida,
-                    pidiendoEntrada = estado.pidiendoEntrada,
-                    terminado = estado.terminado,
-                    exito = estado.exito,
-                    onEnviar = controlador::enviarEntrada,
-                    modifier = Modifier.weight(fraccionConsola).fillMaxHeight()
-                        .padding(start = 12.dp, bottom = 8.dp)
-                )
-                DivisorVertical { delta ->
-                    fraccionConsola = (fraccionConsola + delta / anchoPx).coerceIn(FRACCION_MINIMA, FRACCION_MAXIMA)
+            if (hayAbajo) {
+                DivisorHorizontal { delta ->
+                    fraccionArriba = (fraccionArriba + delta / altoPx).coerceIn(FRACCION_MINIMA, FRACCION_MAXIMA)
                 }
-                PanelProblemas(
-                    fases = estado.fases,
-                    onSeleccionar = controlador::seleccionar,
-                    modifier = Modifier.weight(1f - fraccionConsola).fillMaxHeight()
-                        .padding(end = 12.dp, bottom = 8.dp)
-                )
+                // ---- consola | problemas ----
+                Row(Modifier.fillMaxWidth().weight(1f - fraccionArriba)) {
+                    if (hayConsola) {
+                        ConsolaTaller(
+                            salida = estado.salida,
+                            pidiendoEntrada = estado.pidiendoEntrada,
+                            terminado = estado.terminado,
+                            exito = estado.exito,
+                            onEnviar = controlador::enviarEntrada,
+                            tamanio = paneles.tamanio(PANEL_CONSOLA),
+                            modifier = Modifier.weight(if (hayProblemas) fraccionConsola else 1f)
+                                .fillMaxHeight()
+                                .padding(start = 12.dp, end = if (hayProblemas) 0.dp else 12.dp, bottom = 8.dp)
+                                .zoomPanel(paneles, PANEL_CONSOLA)
+                        )
+                    }
+                    if (hayConsola && hayProblemas) {
+                        DivisorVertical { delta ->
+                            fraccionConsola = (fraccionConsola + delta / anchoPx).coerceIn(FRACCION_MINIMA, FRACCION_MAXIMA)
+                        }
+                    }
+                    if (hayProblemas) {
+                        PanelProblemas(
+                            fases = estado.fases,
+                            onSeleccionar = controlador::seleccionar,
+                            tamanio = paneles.tamanio(PANEL_PROBLEMAS),
+                            modifier = Modifier.weight(if (hayConsola) 1f - fraccionConsola else 1f)
+                                .fillMaxHeight()
+                                .padding(start = if (hayConsola) 0.dp else 12.dp, end = 12.dp, bottom = 8.dp)
+                                .zoomPanel(paneles, PANEL_PROBLEMAS)
+                        )
+                    }
+                }
             }
         }
     }
@@ -281,16 +320,19 @@ private fun ContenidoConMuelles(
 
 // Modo simple (5A): codigo arriba y consola abajo, sin pestañas, con un
 // divisor arrastrable entre las dos. La consola a la vista todo el tiempo
-// es lo que hace util al modo para aprender.
+// es lo que hace util al modo para aprender. Si la consola se apaga desde
+// Ver -> Paneles, queda solo el editor.
 @Composable
 private fun ContenidoSimple(
     estado: EstadoWorkbench,
     controlador: MokaControlador,
     tamanioFuente: Int,
     alCambiarTamanio: (Int) -> Unit,
+    paneles: EstadoPaneles,
     modifier: Modifier = Modifier
 ) {
     var fraccionCodigo by remember { mutableFloatStateOf(0.62f) }
+    val hayConsola = paneles.visible(PANEL_CONSOLA)
     BoxWithConstraints(modifier.fillMaxSize()) {
         val altoPx = constraints.maxHeight.toFloat().coerceAtLeast(1f)
         Column(Modifier.fillMaxSize()) {
@@ -304,53 +346,76 @@ private fun ContenidoSimple(
                 alCambiarTamanio = alCambiarTamanio,
                 alDeshacer = controlador::deshacer,
                 alRehacer = controlador::rehacer,
-                modifier = Modifier.fillMaxWidth().weight(fraccionCodigo)
-                    .padding(start = 12.dp, end = 12.dp, top = 8.dp)
+                modifier = Modifier.fillMaxWidth()
+                    .weight(if (hayConsola) fraccionCodigo else 1f)
+                    .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = if (hayConsola) 0.dp else 8.dp)
+                    .zoomEditor(tamanioFuente, alCambiarTamanio)
             )
-            DivisorHorizontal { delta ->
-                fraccionCodigo = (fraccionCodigo + delta / altoPx).coerceIn(0.25f, FRACCION_MAXIMA)
+            if (hayConsola) {
+                DivisorHorizontal { delta ->
+                    fraccionCodigo = (fraccionCodigo + delta / altoPx).coerceIn(0.25f, FRACCION_MAXIMA)
+                }
+                ConsolaTaller(
+                    salida = estado.salida,
+                    pidiendoEntrada = estado.pidiendoEntrada,
+                    terminado = estado.terminado,
+                    exito = estado.exito,
+                    onEnviar = controlador::enviarEntrada,
+                    tamanio = paneles.tamanio(PANEL_CONSOLA),
+                    modifier = Modifier.fillMaxWidth().weight(1f - fraccionCodigo)
+                        .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
+                        .zoomPanel(paneles, PANEL_CONSOLA)
+                )
             }
-            ConsolaTaller(
-                salida = estado.salida,
-                pidiendoEntrada = estado.pidiendoEntrada,
-                terminado = estado.terminado,
-                exito = estado.exito,
-                onEnviar = controlador::enviarEntrada,
-                modifier = Modifier.fillMaxWidth().weight(1f - fraccionCodigo)
-                    .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
-            )
         }
     }
 }
 
-// Layout de pantalla angosta. Los indices 1..5 llaman al MISMO selector
-// de paneles que usa el contenedor del modo ancho; no hay una segunda
-// copia de Tokens/Arbol/Semantica/TAC/Ejecucion que pueda desactualizarse.
+// Layout de pantalla angosta. Las pestañas se arman con los paneles
+// VISIBLES (5C): apagar un panel desde Ver -> Paneles saca su pestaña.
+// El contenido de cada pestaña de fase es el MISMO PanelFase que usa el
+// muelle derecho del modo ancho; no hay una segunda copia que pueda
+// desactualizarse.
 @Composable
 private fun ContenidoPorPestanas(
     estado: EstadoWorkbench,
     controlador: MokaControlador,
     modificado: Boolean,
-    pestanas: List<String>,
     simple: Boolean,
     tamanioFuente: Int,
     alCambiarTamanio: (Int) -> Unit,
+    paneles: EstadoPaneles,
     modifier: Modifier = Modifier
 ) {
+    // Pares (id de panel, titulo de la pestaña).
+    val pestanasVisibles: List<Pair<String, String>> = buildList {
+        add(PANEL_EDITOR to "Codigo")
+        if (!simple) {
+            for (id in PANELES_CON_FASE) {
+                if (paneles.visible(id)) add(id to tituloDePanel(id))
+            }
+            if (paneles.visible(PANEL_PROBLEMAS)) add(PANEL_PROBLEMAS to "Problemas")
+        }
+        if (paneles.visible(PANEL_CONSOLA)) add(PANEL_CONSOLA to "Consola")
+    }
+
     var pestana by remember { mutableIntStateOf(0) }
+    // Si se apaga el panel de la pestaña activa, el indice guardado puede
+    // quedar afuera de la lista: se acota sin tocar el estado.
+    val activa = pestana.coerceIn(0, pestanasVisibles.lastIndex)
 
     Column(modifier.fillMaxSize()) {
         PrimaryScrollableTabRow(
-            selectedTabIndex = pestana,
+            selectedTabIndex = activa,
             modifier = Modifier.fillMaxWidth(),
             edgePadding = 8.dp
         ) {
-            pestanas.forEachIndexed { indice, titulo ->
+            pestanasVisibles.forEachIndexed { indice, par ->
                 // El asterisco de modificado tambien en la pestaña Codigo:
                 // en modo pestañas la barra de archivo puede quedar lejos.
-                val rotulo = if (indice == 0 && modificado) "$titulo *" else titulo
+                val rotulo = if (indice == 0 && modificado) "${par.second} *" else par.second
                 Tab(
-                    selected = pestana == indice,
+                    selected = activa == indice,
                     onClick = { pestana = indice },
                     text = { Text(rotulo) }
                 )
@@ -360,8 +425,8 @@ private fun ContenidoPorPestanas(
         Box(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp)) {
             val contenido = Modifier.fillMaxSize()
                 .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
-            when {
-                pestana == 0 -> EditorTaller(
+            when (val id = pestanasVisibles[activa].first) {
+                PANEL_EDITOR -> EditorTaller(
                     fuente = estado.fuente,
                     tokens = (estado.fases.getValue(Fase.LEXICA).artefacto as? Artefacto.Lexico)?.tokens,
                     diagnosticos = estado.diagnosticos,
@@ -371,35 +436,29 @@ private fun ContenidoPorPestanas(
                     alCambiarTamanio = alCambiarTamanio,
                     alDeshacer = controlador::deshacer,
                     alRehacer = controlador::rehacer,
-                    modifier = contenido
+                    modifier = contenido.zoomEditor(tamanioFuente, alCambiarTamanio)
                 )
-                // En modo simple la pestaña 1 es la Consola directamente.
-                simple -> ConsolaTaller(
+                PANEL_CONSOLA -> ConsolaTaller(
                     salida = estado.salida,
                     pidiendoEntrada = estado.pidiendoEntrada,
                     terminado = estado.terminado,
                     exito = estado.exito,
                     onEnviar = controlador::enviarEntrada,
-                    modifier = contenido
+                    tamanio = paneles.tamanio(PANEL_CONSOLA),
+                    modifier = contenido.zoomPanel(paneles, PANEL_CONSOLA)
                 )
-                pestana in 1..5 -> PanelFase(
-                    indice = pestana - 1,
-                    estado = estado,
-                    onSeleccionar = controlador::seleccionar,
-                    modifier = contenido
-                )
-                pestana == 6 -> PanelProblemas(
+                PANEL_PROBLEMAS -> PanelProblemas(
                     fases = estado.fases,
                     onSeleccionar = controlador::seleccionar,
-                    modifier = contenido
+                    tamanio = paneles.tamanio(PANEL_PROBLEMAS),
+                    modifier = contenido.zoomPanel(paneles, PANEL_PROBLEMAS)
                 )
-                else -> ConsolaTaller(
-                    salida = estado.salida,
-                    pidiendoEntrada = estado.pidiendoEntrada,
-                    terminado = estado.terminado,
-                    exito = estado.exito,
-                    onEnviar = controlador::enviarEntrada,
-                    modifier = contenido
+                else -> PanelFase(
+                    panelId = id,
+                    estado = estado,
+                    onSeleccionar = controlador::seleccionar,
+                    paneles = paneles,
+                    modifier = contenido.zoomPanel(paneles, id)
                 )
             }
         }

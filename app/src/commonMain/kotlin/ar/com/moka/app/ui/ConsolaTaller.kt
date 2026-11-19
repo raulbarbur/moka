@@ -48,6 +48,8 @@ fun ConsolaTaller(
     terminado: Boolean,
     exito: Boolean,
     onEnviar: (String) -> Unit,
+    // 5C: tamano de letra propio del panel (Ctrl + rueda sobre la consola).
+    tamanio: Int,
     modifier: Modifier = Modifier
 ) {
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceVariant) {
@@ -73,7 +75,7 @@ fun ConsolaTaller(
                 for (linea in salida) {
                     Text(
                         linea.texto,
-                        style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp),
+                        style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = tamanio.sp),
                         color = if (linea.esError) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurface
                     )

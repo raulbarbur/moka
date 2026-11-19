@@ -105,11 +105,15 @@ fun ArbolGrafico(
     raiz: ElementoVista,
     seleccion: Posicion?,
     onSeleccionar: (Posicion) -> Unit,
+    // 5C: tamano de letra propio del panel: agranda el TEXTO de los nodos
+    // (ademas del zoom de camara con la rueda, que sigue funcionando).
+    tamanio: Int,
     modifier: Modifier = Modifier
 ) {
     val medidorTexto = rememberTextMeasurer()
+    val estiloNodo = ESTILO_NODO.copy(fontSize = tamanio.sp)
     val esquema = MaterialTheme.colorScheme
-    val layout = remember(raiz, medidorTexto) { construirLayout(raiz, medidorTexto) }
+    val layout = remember(raiz, medidorTexto, estiloNodo) { construirLayout(raiz, medidorTexto, estiloNodo) }
 
     var tamano by remember { mutableStateOf(IntSize.Zero) }
     var escala by remember(layout) { mutableFloatStateOf(1f) }
@@ -244,8 +248,8 @@ fun ArbolGrafico(
 
 // ----------------------------- construccion -----------------------------
 
-private fun construirLayout(raiz: ElementoVista, medidor: TextMeasurer): LayoutGrafico {
-    val raizCaja = medirArbol(raiz, medidor)
+private fun construirLayout(raiz: ElementoVista, medidor: TextMeasurer, estilo: TextStyle): LayoutGrafico {
+    val raizCaja = medirArbol(raiz, medidor, estilo)
     calcularAnchos(raizCaja)
     val alturasPorNivel = alturasPorNivel(raizCaja)
     val ysPorNivel = mutableMapOf<Int, Float>()
@@ -265,8 +269,8 @@ private fun construirLayout(raiz: ElementoVista, medidor: TextMeasurer): LayoutG
     )
 }
 
-private fun medirArbol(elemento: ElementoVista, medidor: TextMeasurer): CajaNodo {
-    val medicion = medidor.measure(elemento.texto, style = ESTILO_NODO, maxLines = 1)
+private fun medirArbol(elemento: ElementoVista, medidor: TextMeasurer, estilo: TextStyle): CajaNodo {
+    val medicion = medidor.measure(elemento.texto, style = estilo, maxLines = 1)
     return CajaNodo(
         texto = elemento.texto,
         pos = elemento.pos,
@@ -274,7 +278,7 @@ private fun medirArbol(elemento: ElementoVista, medidor: TextMeasurer): CajaNodo
         medicion = medicion,
         ancho = medicion.size.width + 24f,
         alto = medicion.size.height + 14f,
-        hijos = elemento.hijos.map { medirArbol(it, medidor) }
+        hijos = elemento.hijos.map { medirArbol(it, medidor, estilo) }
     )
 }
 

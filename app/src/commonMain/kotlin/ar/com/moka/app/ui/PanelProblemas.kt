@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ar.com.moka.app.estado.EstadoFaseUi
 import ar.com.moka.core.ast.Posicion
 import ar.com.moka.core.pipeline.Fase
@@ -50,6 +51,8 @@ import ar.com.moka.core.semantico.Severidad
 fun PanelProblemas(
     fases: Map<Fase, EstadoFaseUi>,
     onSeleccionar: (Posicion) -> Unit,
+    // 5C: tamano de letra propio del panel.
+    tamanio: Int,
     modifier: Modifier = Modifier
 ) {
     var faseFiltro by remember { mutableStateOf<Fase?>(null) }
@@ -117,12 +120,13 @@ fun PanelProblemas(
                 Text(
                     "Sin problemas.",
                     style = MaterialTheme.typography.bodyMedium,
+                    fontSize = tamanio.sp,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
             LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
                 items(visibles) { diagnostico ->
-                    FilaDiagnostico(diagnostico, onSeleccionar)
+                    FilaDiagnostico(diagnostico, onSeleccionar, tamanio)
                 }
             }
         }
@@ -133,7 +137,7 @@ fun PanelProblemas(
 // (linea:columna) y el mensaje en espanol. Tocarla selecciona el rango
 // en el editor. Compartida con el panel semantico.
 @Composable
-fun FilaDiagnostico(diagnostico: Diagnostico, onSeleccionar: (Posicion) -> Unit) {
+fun FilaDiagnostico(diagnostico: Diagnostico, onSeleccionar: (Posicion) -> Unit, tamanio: Int) {
     val color = if (diagnostico.severidad == Severidad.ERROR) {
         MaterialTheme.colorScheme.error
     } else {
@@ -143,14 +147,15 @@ fun FilaDiagnostico(diagnostico: Diagnostico, onSeleccionar: (Posicion) -> Unit)
         Modifier.fillMaxWidth().clickable { onSeleccionar(diagnostico.pos) }.padding(vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(diagnostico.codigo, style = MaterialTheme.typography.labelMedium, color = color)
+        Text(diagnostico.codigo, style = MaterialTheme.typography.labelMedium, fontSize = tamanio.sp, color = color)
         Spacer(Modifier.width(8.dp))
         Text(
             "(${diagnostico.pos.linea}:${diagnostico.pos.columna})",
             style = MaterialTheme.typography.labelMedium,
+            fontSize = tamanio.sp,
             color = MaterialTheme.colorScheme.outline
         )
         Spacer(Modifier.width(8.dp))
-        Text(diagnostico.mensaje, style = MaterialTheme.typography.bodySmall)
+        Text(diagnostico.mensaje, style = MaterialTheme.typography.bodySmall, fontSize = tamanio.sp)
     }
 }

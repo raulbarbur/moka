@@ -59,6 +59,8 @@ fun PanelSemantico(
     diagnosticos: List<Diagnostico>,
     seleccion: Posicion?,
     onSeleccionar: (Posicion) -> Unit,
+    // 5C: tamano de letra propio del panel.
+    tamanio: Int,
     modifier: Modifier = Modifier
 ) {
     if (semantico == null) {
@@ -78,9 +80,9 @@ fun PanelSemantico(
         }
 
         when (pestana) {
-            0 -> SubPanelSimbolos(semantico.raiz, seleccion, onSeleccionar, Modifier.fillMaxSize())
-            1 -> SubPanelChequeos(semantico, seleccion, onSeleccionar, Modifier.fillMaxSize())
-            else -> SubPanelErrores(diagnosticos, onSeleccionar, Modifier.fillMaxSize())
+            0 -> SubPanelSimbolos(semantico.raiz, seleccion, onSeleccionar, tamanio, Modifier.fillMaxSize())
+            1 -> SubPanelChequeos(semantico, seleccion, onSeleccionar, tamanio, Modifier.fillMaxSize())
+            else -> SubPanelErrores(diagnosticos, onSeleccionar, tamanio, Modifier.fillMaxSize())
         }
     }
 }
@@ -92,6 +94,7 @@ private fun SubPanelSimbolos(
     raiz: Ambito,
     seleccion: Posicion?,
     onSeleccionar: (Posicion) -> Unit,
+    tamanio: Int,
     modifier: Modifier = Modifier
 ) {
     Text("Tabla de simbolos (arbol de ambitos)", style = MaterialTheme.typography.labelLarge)
@@ -99,6 +102,7 @@ private fun SubPanelSimbolos(
         raices = listOf(vistaDeAmbito(raiz)),
         seleccion = seleccion,
         onSeleccionar = onSeleccionar,
+        tamanio = tamanio,
         modifier = modifier
     )
 }
@@ -160,8 +164,10 @@ private fun SubPanelChequeos(
     semantico: Artefacto.Semantico,
     seleccion: Posicion?,
     onSeleccionar: (Posicion) -> Unit,
+    tamanio: Int,
     modifier: Modifier = Modifier
 ) {
+    val mono = MONO_CHICO.copy(fontSize = tamanio.sp)
     var soloErrores by remember(semantico) { mutableStateOf(false) }
     val visibles = remember(semantico, soloErrores) {
         if (soloErrores) semantico.chequeos.filter { !it.ok } else semantico.chequeos
@@ -192,15 +198,15 @@ private fun SubPanelChequeos(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             if (chequeo.ok) "\u2713" else "\u2717",
-                            style = MONO_CHICO,
+                            style = mono,
                             color = color,
                             modifier = Modifier.width(18.dp)
                         )
-                        Text(chequeo.texto, style = MONO_CHICO, color = color, maxLines = 1)
+                        Text(chequeo.texto, style = mono, color = color, maxLines = 1)
                         Spacer(Modifier.width(8.dp))
                         Text(
                             "(${chequeo.pos.linea}:${chequeo.pos.columna})",
-                            style = MONO_CHICO,
+                            style = mono,
                             color = MaterialTheme.colorScheme.outline
                         )
                     }
@@ -213,6 +219,7 @@ private fun SubPanelChequeos(
                             append(chequeo.tipoObtenido?.descripcion ?: "-")
                         },
                         style = MaterialTheme.typography.bodySmall,
+                        fontSize = tamanio.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 18.dp)
                     )
@@ -228,6 +235,7 @@ private fun SubPanelChequeos(
 private fun SubPanelErrores(
     diagnosticos: List<Diagnostico>,
     onSeleccionar: (Posicion) -> Unit,
+    tamanio: Int,
     modifier: Modifier = Modifier
 ) {
     if (diagnosticos.isEmpty()) {
@@ -236,7 +244,7 @@ private fun SubPanelErrores(
     }
     LazyColumn(modifier) {
         items(diagnosticos) { diagnostico ->
-            FilaDiagnostico(diagnostico, onSeleccionar)
+            FilaDiagnostico(diagnostico, onSeleccionar, tamanio)
         }
     }
 }

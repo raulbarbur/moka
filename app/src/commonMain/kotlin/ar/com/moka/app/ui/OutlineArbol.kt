@@ -65,8 +65,11 @@ fun OutlineArbol(
     raices: List<ElementoVista>,
     seleccion: Posicion?,
     onSeleccionar: (Posicion) -> Unit,
+    // 5C: tamano de letra propio del panel que lo contiene.
+    tamanio: Int,
     modifier: Modifier = Modifier
 ) {
+    val mono = MONO_CHICO.copy(fontSize = tamanio.sp)
     val todasLasClaves = remember(raices) { mutableListOf<String>().also { recolectarClaves(raices, "", it) } }
     var expandidos by remember(raices) {
         mutableStateOf(
@@ -89,6 +92,7 @@ fun OutlineArbol(
             items(filas, key = { it.clave }) { fila ->
                 FilaOutline(
                     fila = fila,
+                    estilo = mono,
                     seleccionada = fila.pos != null && fila.pos == seleccion,
                     onClick = {
                         if (fila.tieneHijos) {
@@ -103,7 +107,7 @@ fun OutlineArbol(
 }
 
 @Composable
-private fun FilaOutline(fila: FilaVista, seleccionada: Boolean, onClick: () -> Unit) {
+private fun FilaOutline(fila: FilaVista, estilo: TextStyle, seleccionada: Boolean, onClick: () -> Unit) {
     val fondo = if (seleccionada) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
     Row(
         Modifier.fillMaxWidth()
@@ -116,13 +120,13 @@ private fun FilaOutline(fila: FilaVista, seleccionada: Boolean, onClick: () -> U
         // Flecha (escapes Unicode: pegado seguro) o sangria si es hoja.
         Text(
             if (!fila.tieneHijos) " " else if (fila.expandida) "\u25BE" else "\u25B8",
-            style = MONO_CHICO,
+            style = estilo,
             color = MaterialTheme.colorScheme.outline,
             modifier = Modifier.width(16.dp)
         )
         Text(
             fila.texto,
-            style = MONO_CHICO,
+            style = estilo,
             color = if (fila.esError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
             maxLines = 1
         )

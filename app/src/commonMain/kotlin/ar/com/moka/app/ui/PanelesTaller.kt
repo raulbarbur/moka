@@ -5,10 +5,15 @@
 //  Tokens | Arbol | Semantica | TAC | Ejecucion. Cada panel recibe solo
 //  el artefacto de su fase y lo poco mas que necesita del estado.
 //
-//  Desde 7.11, el contenido esta extraido en PanelFase(). El modo
-//  angosto de Taller usa esa misma funcion para mostrar cada panel como
-//  una pestaña de pantalla completa. Asi las variantes ancha/angosta no
-//  duplican reglas ni pueden quedar con comportamientos distintos.
+//  5C: las pestañas se arman con los paneles de fase VISIBLES (el menu
+//  Ver -> Paneles puede apagar algunos) y el Ctrl + rueda se engancha
+//  aca, sobre el panel de la pestaña activa: el zoom cambia el tamano
+//  de letra de ESE panel, no el de todos. Cada panel recibe su tamano
+//  desde EstadoPaneles.
+//
+//  El contenido sigue saliendo de PanelFase(), que comparte con el modo
+//  angosto de Taller. Asi las variantes ancha/angosta no duplican reglas
+//  ni pueden quedar con comportamientos distintos.
 // =======================================================================
 package ar.com.moka.app.ui
 
@@ -36,16 +41,23 @@ import ar.com.moka.core.ast.Posicion
 import ar.com.moka.core.pipeline.Artefacto
 import ar.com.moka.core.pipeline.Fase
 
-// internal: Taller la usa para armar las pestañas grandes del modo angosto.
-internal val PESTANAS_FASES = listOf("Tokens", "Arbol", "Semantica", "TAC", "Ejecucion")
-
 @Composable
 fun PanelesTaller(
     estado: EstadoWorkbench,
     onSeleccionar: (Posicion) -> Unit,
+    paneles: EstadoPaneles,
     modifier: Modifier = Modifier
 ) {
+    val idsVisibles = PANELES_CON_FASE.filter(paneles::visible)
+    // El llamador (Taller) ya evita montar este contenedor cuando no hay
+    // ninguno visible; la guarda queda por las dudas.
+    if (idsVisibles.isEmpty()) return
+
     var pestana by remember { mutableIntStateOf(0) }
+    // Si se apaga el panel de la pestaña activa, el indice guardado puede
+    // quedar afuera: se acota sin tocar el estado.
+    val activa = pestana.coerceIn(0, idsVisibles.lastIndex)
+    val idActivo = idsVisibles[activa]
 
     Surface(
         modifier = modifier,
@@ -53,63 +65,72 @@ fun PanelesTaller(
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(Modifier.fillMaxSize()) {
-            PrimaryTabRow(selectedTabIndex = pestana, modifier = Modifier.fillMaxWidth()) {
-                PESTANAS_FASES.forEachIndexed { indice, titulo ->
+            PrimaryTabRow(selectedTabIndex = activa, modifier = Modifier.fillMaxWidth()) {
+                idsVisibles.forEachIndexed { indice, id ->
                     Tab(
-                        selected = pestana == indice,
+                        selected = activa == indice,
                         onClick = { pestana = indice },
-                        text = { Text(titulo) }
+                        text = { Text(tituloDePanel(id)) }
                     )
                 }
             }
             PanelFase(
-                indice = pestana,
+                panelId = idActivo,
                 estado = estado,
                 onSeleccionar = onSeleccionar,
+                paneles = paneles,
+                // 5C: Ctrl + rueda aca cambia el tamano del panel que se
+                // esta viendo (el de la pestaña activa), no el de todos.
                 modifier = Modifier.fillMaxSize()
+                    .zoomConRueda { delta -> paneles.cambiarTamanio(idActivo, delta) }
             )
         }
     }
 }
 
-// Unico mapa pestaña -> panel. Lo comparten:
+// Unico mapa id de panel -> contenido. Lo comparten:
 //  - el muelle derecho del modo ancho (PanelesTaller), y
-//  - las pestañas 1..5 del modo angosto (Taller).
+//  - las pestañas de fase del modo angosto (Taller).
 @Composable
 fun PanelFase(
-    indice: Int,
+    panelId: String,
     estado: EstadoWorkbench,
     onSeleccionar: (Posicion) -> Unit,
+    paneles: EstadoPaneles,
     modifier: Modifier = Modifier
 ) {
-    when (indice) {
-        0 -> PanelTokens(
+    when (panelId) {
+        PANEL_TOKENS -> PanelTokens(
             lexico = estado.fases.getValue(Fase.LEXICA).artefacto as? Artefacto.Lexico,
             seleccion = estado.seleccion,
             onSeleccionar = onSeleccionar,
+            tamanio = paneles.tamanio(PANEL_TOKENS),
             modifier = modifier
         )
-        1 -> PanelArbol(
+        PANEL_ARBOL -> PanelArbol(
             sintactico = estado.fases.getValue(Fase.SINTACTICA).artefacto as? Artefacto.Sintactico,
             seleccion = estado.seleccion,
             onSeleccionar = onSeleccionar,
+            tamanio = paneles.tamanio(PANEL_ARBOL),
             modifier = modifier
         )
-        2 -> {
+        PANEL_SEMANTICA -> {
             val slotSemantica = estado.fases.getValue(Fase.SEMANTICA)
             PanelSemantico(
                 semantico = slotSemantica.artefacto as? Artefacto.Semantico,
                 diagnosticos = slotSemantica.diagnosticos,
                 seleccion = estado.seleccion,
                 onSeleccionar = onSeleccionar,
+                tamanio = paneles.tamanio(PANEL_SEMANTICA),
                 modifier = modifier
             )
         }
-        3 -> PanelTac(
+        PANEL_TAC -> PanelTac(
             tac = estado.fases.getValue(Fase.GENERACION_TAC).artefacto as? Artefacto.Tac,
             pasoActual = estado.pasoActual,
             seleccion = estado.seleccion,
             onSeleccionar = onSeleccionar,
+            tamanio = paneles.tamanio(PANEL_TAC),
             modifier = modifier
         )
         else -> PanelEjecucion(
@@ -118,6 +139,7 @@ fun PanelFase(
             terminado = estado.terminado,
             exito = estado.exito,
             cuadruplasEjecutadas = estado.cuadruplasEjecutadas,
+            tamanio = paneles.tamanio(PANEL_EJECUCION),
             modifier = modifier
         )
     }

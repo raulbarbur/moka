@@ -57,6 +57,8 @@ fun ArchivoTaller(
     alCambiarModo: (ModoTaller) -> Unit,
     tamanioFuente: Int,
     alCambiarTamanio: (Int) -> Unit,
+    // 5C: tamanos y visibilidad por panel (menu Ver -> Paneles).
+    paneles: EstadoPaneles,
     contenido: @Composable () -> Unit
 ) {
     val estado by controlador.estado.collectAsState()
@@ -200,6 +202,7 @@ fun ArchivoTaller(
             },
             tamanioFuente = tamanioFuente,
             alCambiarTamanio = alCambiarTamanio,
+            paneles = paneles,
             tema = tema,
             alCambiarTema = alCambiarTema,
             modo = modo,
@@ -313,6 +316,7 @@ private fun gruposDeMenu(
     alAlternarAutocompletado: () -> Unit,
     tamanioFuente: Int,
     alCambiarTamanio: (Int) -> Unit,
+    paneles: EstadoPaneles,
     tema: TemaMoka,
     alCambiarTema: (TemaMoka) -> Unit,
     modo: ModoTaller,
@@ -349,16 +353,23 @@ private fun gruposDeMenu(
     )
     val ver = GrupoMenu(
         "Ver",
-        listOf(
-            RotuloMenu("Tema"),
-            ItemMenu("Sistema", marcado = tema == TemaMoka.SISTEMA) { alCambiarTema(TemaMoka.SISTEMA) },
-            ItemMenu("Claro", marcado = tema == TemaMoka.CLARO) { alCambiarTema(TemaMoka.CLARO) },
-            ItemMenu("Oscuro", marcado = tema == TemaMoka.OSCURO) { alCambiarTema(TemaMoka.OSCURO) },
-            SeparadorMenu,
-            RotuloMenu("Modo"),
-            ItemMenu("Completo", marcado = modo == ModoTaller.COMPLETO) { alCambiarModo(ModoTaller.COMPLETO) },
-            ItemMenu("Simple (solo editor y consola)", marcado = modo == ModoTaller.SIMPLE) { alCambiarModo(ModoTaller.SIMPLE) }
-        )
+        buildList {
+            add(RotuloMenu("Tema"))
+            add(ItemMenu("Sistema", marcado = tema == TemaMoka.SISTEMA) { alCambiarTema(TemaMoka.SISTEMA) })
+            add(ItemMenu("Claro", marcado = tema == TemaMoka.CLARO) { alCambiarTema(TemaMoka.CLARO) })
+            add(ItemMenu("Oscuro", marcado = tema == TemaMoka.OSCURO) { alCambiarTema(TemaMoka.OSCURO) })
+            add(SeparadorMenu)
+            add(RotuloMenu("Modo"))
+            add(ItemMenu("Completo", marcado = modo == ModoTaller.COMPLETO) { alCambiarModo(ModoTaller.COMPLETO) })
+            add(ItemMenu("Simple (solo editor y consola)", marcado = modo == ModoTaller.SIMPLE) { alCambiarModo(ModoTaller.SIMPLE) })
+            add(SeparadorMenu)
+            // 5C: prender/apagar paneles sueltos. No cierran el menu:
+            // acomodar la vista suele ser de a varios toques.
+            add(RotuloMenu("Paneles"))
+            for (id in PANELES_CONMUTABLES) {
+                add(ItemMenu(tituloDePanel(id), marcado = paneles.visible(id), cierraAlAccionar = false) { paneles.alternarVisible(id) })
+            }
+        }
     )
     val ayuda = GrupoMenu(
         "Ayuda",

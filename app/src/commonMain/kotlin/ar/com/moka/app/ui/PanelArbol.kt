@@ -44,6 +44,8 @@ fun PanelArbol(
     sintactico: Artefacto.Sintactico?,
     seleccion: Posicion?,
     onSeleccionar: (Posicion) -> Unit,
+    // 5C: tamano de letra propio del panel (outline y nodos del grafico).
+    tamanio: Int,
     modifier: Modifier = Modifier
 ) {
     if (sintactico == null) {
@@ -101,6 +103,7 @@ fun PanelArbol(
                         raiz = vistaDeAst(ast!!),
                         seleccion = seleccion,
                         onSeleccionar = onSeleccionar,
+                        tamanio = tamanio,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
@@ -108,6 +111,7 @@ fun PanelArbol(
                         raices = listOf(vistaDeAst(ast!!)),
                         seleccion = seleccion,
                         onSeleccionar = onSeleccionar,
+                        tamanio = tamanio,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -119,6 +123,7 @@ fun PanelArbol(
                     raices = listOf(vistaDeParseo(sintactico.arbolParseo)),
                     seleccion = seleccion,
                     onSeleccionar = onSeleccionar,
+                    tamanio = tamanio,
                     modifier = Modifier.fillMaxSize()
                 )
             }
