@@ -48,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import ar.com.moka.app.TemaMoka
@@ -97,7 +98,11 @@ fun Taller(
             // en pestañas aunque su ancho parezca de tablet.
             val angosto = maxWidth < ANCHO_MINIMO_MUELLES || maxHeight < ALTURA_MINIMA_MUELLES
             val simple = modo == ModoTaller.SIMPLE
-            Column(Modifier.fillMaxSize()) {
+            Column(
+                // 5B: Ctrl + rueda del mouse cambia el tamano de letra
+                // desde cualquier panel (ver UtilidadesPlataforma).
+                Modifier.fillMaxSize().zoomConRueda { delta -> alCambiarTamanio(tamanioFuente + delta) }
+            ) {
                 BarraAcciones(controlador, angosto || simple, simple)
                 if (!simple) {
                     BarraDepuracion(controlador)
@@ -177,6 +182,8 @@ private fun BarraAcciones(controlador: MokaControlador, angosto: Boolean, simple
 private fun DivisorVertical(onArrastre: (Float) -> Unit) {
     Box(
         Modifier.fillMaxHeight().width(9.dp)
+            // 5B: cursor de flecha doble horizontal al pasar el mouse
+            .pointerHoverIcon(cursorDivisorVertical())
             .pointerInput(Unit) { detectDragGestures { cambio, delta -> cambio.consume(); onArrastre(delta.x) } }
     ) {
         Box(Modifier.align(Alignment.Center).fillMaxHeight().width(1.dp)
@@ -188,6 +195,8 @@ private fun DivisorVertical(onArrastre: (Float) -> Unit) {
 private fun DivisorHorizontal(onArrastre: (Float) -> Unit) {
     Box(
         Modifier.fillMaxWidth().height(9.dp)
+            // 5B: cursor de flecha doble vertical al pasar el mouse
+            .pointerHoverIcon(cursorDivisorHorizontal())
             .pointerInput(Unit) { detectDragGestures { cambio, delta -> cambio.consume(); onArrastre(delta.y) } }
     ) {
         Box(Modifier.align(Alignment.Center).fillMaxWidth().height(1.dp)
