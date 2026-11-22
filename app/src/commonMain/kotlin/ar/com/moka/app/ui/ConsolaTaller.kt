@@ -35,7 +35,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,14 +75,34 @@ fun ConsolaTaller(
             // Sigue la salida: cada linea nueva baja el scroll al final.
             LaunchedEffect(salida.size) { desplazamiento.animateScrollTo(desplazamiento.maxValue) }
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(desplazamiento)) {
-                for (linea in salida) {
-                    Text(
-                        linea.texto,
-                        style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = tamanio.sp),
-                        color = if (linea.esError) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurface
-                    )
+                // La salida llega en trozos: imprimir manda "texto\n" e
+                // imprimir_sin_salto manda "texto" a secas. Se pegan todos en
+                // UN solo texto para que los saltos de linea sean los del
+                // programa (antes cada trozo ocupaba su propia fila y se
+                // veian lineas en blanco y cortes de mas). Los mensajes de
+                // error se pintan en rojo y siempre en su propia linea.
+                val colorError = MaterialTheme.colorScheme.error
+                val texto = remember(salida, colorError) {
+                    buildAnnotatedString {
+                        var alInicioDeLinea = true
+                        for (linea in salida) {
+                            if (linea.esError) {
+                                if (!alInicioDeLinea) append("\n")
+                                withStyle(SpanStyle(color = colorError)) { append(linea.texto) }
+                                append("\n")
+                                alInicioDeLinea = true
+                            } else if (linea.texto.isNotEmpty()) {
+                                append(linea.texto)
+                                alInicioDeLinea = linea.texto.last() == '\n'
+                            }
+                        }
+                    }
                 }
+                Text(
+                    texto,
+                    style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = tamanio.sp),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
 
             if (pidiendoEntrada) {

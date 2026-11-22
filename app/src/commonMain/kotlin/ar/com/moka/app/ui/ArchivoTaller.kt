@@ -22,9 +22,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -69,10 +71,17 @@ fun ArchivoTaller(
     val ambito = rememberCoroutineScope()
     var mensaje by remember { mutableStateOf<String?>(null) }
     var esError by remember { mutableStateOf(false) }
+    val ajustes = recordarAjustesMoka()
     var acercaDe by remember { mutableStateOf(false) }
+    // Tutoriales: se abren desde Ayuda y reemplazan al taller. El indice
+    // de la leccion (-1 = lista) y si estan abiertos sobreviven a rotar.
+    var tutorialesAbiertos by rememberSaveable { mutableStateOf(false) }
+    var leccionActual by rememberSaveable { mutableIntStateOf(-1) }
+    var vistas by remember {
+        mutableStateOf(ajustes.leer("tutoriales_vistos").orEmpty().split(',').filter { it.isNotBlank() }.toSet())
+    }
     val busqueda = LocalBusquedaEditor.current
     val opciones = LocalOpcionesEditor.current
-    val ajustes = recordarAjustesMoka()
     var pendiente by remember { mutableStateOf<ArchivoMoka?>(null) }
     val modificado = sesion.hayCambios(estado.fuente)
 
@@ -83,6 +92,7 @@ fun ArchivoTaller(
         sesion.cargar(nuevo)
         mensaje = null
         pendiente = null
+        tutorialesAbiertos = false
     }
 
     fun ofrecerCarga(nuevo: ArchivoMoka) {
@@ -207,7 +217,8 @@ fun ArchivoTaller(
             alCambiarTema = alCambiarTema,
             modo = modo,
             alCambiarModo = alCambiarModo,
-            alAbrirAcercaDe = { acercaDe = true }
+            alAbrirAcercaDe = { acercaDe = true },
+            alAbrirTutoriales = { tutorialesAbiertos = true }
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             if (maxWidth < 600.dp) {
@@ -233,7 +244,25 @@ fun ArchivoTaller(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
             )
         }
-        Box(Modifier.weight(1f)) { contenido() }
+        Box(Modifier.weight(1f)) {
+            if (tutorialesAbiertos) {
+                PantallaTutoriales(
+                    vistas = vistas,
+                    indice = leccionActual,
+                    alCambiarIndice = { leccionActual = it },
+                    alMarcarVista = { id ->
+                        if (id !in vistas) {
+                            vistas = vistas + id
+                            ajustes.escribir("tutoriales_vistos", vistas.joinToString(","))
+                        }
+                    },
+                    alCargar = { nombre, codigo -> ofrecerCarga(ArchivoMoka(nombre, codigo)) },
+                    alCerrar = { tutorialesAbiertos = false }
+                )
+            } else {
+                contenido()
+            }
+        }
     }
 
     if (acercaDe) {
@@ -321,7 +350,8 @@ private fun gruposDeMenu(
     alCambiarTema: (TemaMoka) -> Unit,
     modo: ModoTaller,
     alCambiarModo: (ModoTaller) -> Unit,
-    alAbrirAcercaDe: () -> Unit
+    alAbrirAcercaDe: () -> Unit,
+    alAbrirTutoriales: () -> Unit
 ): List<GrupoMenu> {
     val archivo = GrupoMenu(
         "Archivo",
@@ -374,8 +404,7 @@ private fun gruposDeMenu(
     val ayuda = GrupoMenu(
         "Ayuda",
         listOf(
-            // Se activa con la Entrega 3C (tutoriales dentro de la app).
-            ItemMenu("Tutoriales (proximamente)", habilitado = false) {},
+            ItemMenu("Tutoriales", accion = alAbrirTutoriales),
             SeparadorMenu,
             ItemMenu("Acerca de Moka", accion = alAbrirAcercaDe)
         )
