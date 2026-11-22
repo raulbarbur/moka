@@ -29,7 +29,13 @@ class ArchivosMokaTest {
 
     @Test
     fun ejemplosSonCopiasSinDestinoDeGuardado() {
-        assertEquals(listOf("hola.moka", "fizzbuzz.moka", "consola.moka"), EjemplosMoka.todos.map { it.nombre })
+        assertEquals(
+            listOf(
+                "hola.moka", "bucles.moka", "funciones.moka", "arreglos.moka",
+                "segun.moka", "clases.moka", "entrada.moka", "fizzbuzz.moka", "consola.moka"
+            ),
+            EjemplosMoka.todos.map { it.nombre }
+        )
         for (ejemplo in EjemplosMoka.todos) {
             assertNull(ejemplo.referencia)
             assertTrue(ejemplo.contenido.isNotBlank())

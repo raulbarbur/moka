@@ -1,0 +1,13 @@
+// Bucles: la tabla del 7 con para y una cuenta regresiva con mientras.
+para (entero i = 1; i <= 10; i = i + 1) {
+    imprimir("7 x " + a_cadena(i) + " = " + a_cadena(7 * i));
+}
+
+imprimir("");
+
+entero falta = 3;
+mientras (falta > 0) {
+    imprimir("Faltan " + a_cadena(falta) + "...");
+    falta = falta - 1;
+}
+imprimir("Despegue!");

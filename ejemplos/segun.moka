@@ -1,0 +1,12 @@
+// Segun: elegir por valor. El romper evita caer en el caso que sigue.
+entero opcion = 2;
+segun (opcion) {
+    caso 1:
+        imprimir("Sumas un punto");
+        romper;
+    caso 2:
+        imprimir("Restas un punto");
+        romper;
+    defecto:
+        imprimir("Opcion desconocida");
+}

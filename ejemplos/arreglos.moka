@@ -1,0 +1,15 @@
+// Arreglos: notas de un curso, promedio y nota mas alta.
+entero[] notas = [7, 8, 10, 6, 9];
+
+flotante suma = 0;
+entero maxima = notas[0];
+para_cada (entero nota : notas) {
+    suma = suma + nota;
+    si (nota > maxima) {
+        maxima = nota;
+    }
+}
+
+imprimir("Cantidad de notas: " + a_cadena(longitud(notas)));
+imprimir("Promedio: " + a_cadena(suma / longitud(notas)));
+imprimir("Nota mas alta: " + a_cadena(maxima));

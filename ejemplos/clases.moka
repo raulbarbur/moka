@@ -1,0 +1,23 @@
+// Clases: campos, constructor y metodos.
+clase Persona {
+    cadena nombre;
+    entero edad;
+
+    constructor(cadena n, entero e) {
+        este.nombre = n;
+        este.edad = e;
+    }
+
+    funcion vacio saludar() {
+        imprimir("Hola, soy " + este.nombre + " y tengo " + a_cadena(este.edad) + " anos.");
+    }
+
+    funcion vacio cumplir() {
+        este.edad = este.edad + 1;
+        imprimir(este.nombre + " cumplio " + a_cadena(este.edad) + " anos.");
+    }
+}
+
+Persona ana = nuevo Persona("Ana", 20);
+ana.saludar();
+ana.cumplir();

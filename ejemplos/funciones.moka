@@ -1,0 +1,14 @@
+// Funciones: con parametros, con retorno y recursivas.
+funcion vacio saludar(cadena nombre) {
+    imprimir("Hola, " + nombre + "!");
+}
+
+funcion entero factorial(entero n) {
+    si (n <= 1) {
+        retornar 1;
+    }
+    retornar n * factorial(n - 1);
+}
+
+saludar("Moka");
+imprimir("factorial(5) = " + a_cadena(factorial(5)));

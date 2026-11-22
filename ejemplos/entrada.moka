@@ -1,0 +1,8 @@
+// Entrada por consola: el programa pregunta y responde.
+imprimir("Como te llamas?");
+cadena nombre = leer();
+imprimir("Hola, " + nombre + "!");
+
+imprimir("Cuantos anos tenes?");
+entero edad = leer_entero();
+imprimir("El ano que viene vas a tener " + a_cadena(edad + 1) + ".");
