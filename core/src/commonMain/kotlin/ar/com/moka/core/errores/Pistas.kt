@@ -37,7 +37,7 @@ object Pistas {
         "SEM-013" to "Una funcion 'vacio' no devuelve nada: llamala como instruccion suelta, no dentro de una expresion.",
         "SEM-015" to "A la izquierda de un = solo puede ir una variable, un campo o un elemento de arreglo.",
         "SEM-053" to "longitud(...) sirve para arreglos y cadenas; a un entero no se le puede pedir su longitud.",
-        "SEM-062" to "El paquete se busca como un archivo con su nombre: 'usar util;' necesita un util.moka al lado del archivo principal (con puntos, una carpeta: util/texto.moka). En la app todavia no se pueden cargar paquetes, proba desde la CLI.",
+        "SEM-062" to "El paquete se busca como un archivo con su nombre: 'usar util;' necesita un util.moka en la carpeta del proyecto (con puntos, una subcarpeta: util/texto.moka). En la app elegi esa carpeta en el menu Proyecto; en la CLI es la carpeta del archivo principal.",
         "SEM-063" to "Abri el archivo del paquete y corregi primero el error que muestra el mensaje; despues volve a ejecutar el principal.",
         "SEM-064" to "La primera linea del archivo del paquete tiene que ser 'paquete <nombre>;' con el mismo nombre que pusiste en el usar.",
         "SEM-065" to "Los paquetes no pueden usarse en circulo: saca el 'usar' de uno de los dos o junta las funciones en un solo paquete.",

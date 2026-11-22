@@ -93,8 +93,10 @@ class ResolvedorPaquetes(private val proveedor: ProveedorPaquetes?) {
                 error("SEM-062", "No se encontro el paquete '$nombre'.", posPedido)
                 return
             }
-            val lex = AnalizadorLexico().analizar(fuente)
-            val sin = AnalizadorSintactico().analizar(fuente, primerId = bloque * BLOQUE_IDS)
+            // P4: el nombre del paquete viaja como `archivo` en cada
+            // posicion, asi un error dentro de util.moka dice "util".
+            val lex = AnalizadorLexico().analizar(fuente, nombre)
+            val sin = AnalizadorSintactico().analizar(fuente, primerId = bloque * BLOQUE_IDS, archivo = nombre)
             val ast = sin.ast
             if (lex.diagnosticos.isNotEmpty() || sin.diagnosticos.isNotEmpty() || ast == null) {
                 val primero = (lex.diagnosticos + sin.diagnosticos).firstOrNull()

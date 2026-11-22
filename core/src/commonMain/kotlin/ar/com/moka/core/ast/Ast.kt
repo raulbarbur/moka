@@ -47,7 +47,12 @@ data class Posicion(
     val linea: Int,
     val columna: Int,
     val finLinea: Int,
-    val finColumna: Int
+    val finColumna: Int,
+    // Moka 2 (P4): en que archivo vive este texto. Null en programas de
+    // un solo archivo (o cuando el llamador no lo sabe); el nombre del
+    // paquete ("util", "util.texto") en el codigo que vino de un `usar`.
+    // Con default null, todo lo que ya construia posiciones sigue igual.
+    val archivo: String? = null
 )
 
 

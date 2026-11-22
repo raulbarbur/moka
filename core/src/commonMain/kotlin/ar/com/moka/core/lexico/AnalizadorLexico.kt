@@ -27,7 +27,9 @@ import org.antlr.v4.kotlinruntime.Token as TokenAntlr
 
 class AnalizadorLexico {
 
-    fun analizar(fuente: String): ResultadoLexico {
+    // `archivo` (P4): nombre del archivo/paquete del que salio la
+    // fuente; queda estampado en la posicion de cada token y diagnostico.
+    fun analizar(fuente: String, archivo: String? = null): ResultadoLexico {
         val lexer = MokaLexer(CharStreams.fromString(fuente))
         lexer.removeErrorListeners() // los errores llegan como tokens (sec. 3.2)
         val stream = CommonTokenStream(lexer)
@@ -44,7 +46,8 @@ class AnalizadorLexico {
                 linea = t.line,
                 columna = t.charPositionInLine,
                 finLinea = t.line,
-                finColumna = t.charPositionInLine + lexema.length - 1
+                finColumna = t.charPositionInLine + lexema.length - 1,
+                archivo = archivo
             )
             tokens.add(Token(tipo, lexema, categoria, pos))
             // Sec. 4.8.1: el diagnostico nace del token de error.

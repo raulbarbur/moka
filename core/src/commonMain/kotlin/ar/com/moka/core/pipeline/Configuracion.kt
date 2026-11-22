@@ -16,5 +16,10 @@ data class Configuracion(
     val profundidadMaxima: Int = 1000,
     // Moka 2 (P1): quien busca la fuente de un `usar paquete;`. Null
     // significa "no hay carga de paquetes" y todo usar da SEM-062.
-    val proveedorPaquetes: ProveedorPaquetes? = null
+    val proveedorPaquetes: ProveedorPaquetes? = null,
+    // Moka 2 (P4): nombre del archivo principal, para que sus errores
+    // digan de que archivo salieron. Null = mostrar solo linea/columna,
+    // como siempre. La CLI pasa el nombre real; la GUI lo deja en null
+    // (sus errores de paquetes igual muestran el nombre del paquete).
+    val archivoPrincipal: String? = null
 )

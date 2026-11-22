@@ -69,7 +69,9 @@ fun main(args: Array<String>) {
 
     val exito = runBlocking {
         var ok = true
-        Moka(Configuracion(proveedorPaquetes = proveedor)).procesar(fuente, ConsolaCli(), modo).collect { evento ->
+        // P4: el nombre del archivo viaja a las posiciones, asi con
+        // paquetes cada error dice de que archivo salio.
+        Moka(Configuracion(proveedorPaquetes = proveedor, archivoPrincipal = archivo.name)).procesar(fuente, ConsolaCli(), modo).collect { evento ->
             when (evento) {
                 is EventoPipeline.FaseCompletada ->
                     evento.diagnosticos.forEach { System.err.println(formatear(it)) }
@@ -102,7 +104,10 @@ fun main(args: Array<String>) {
 // pista didactica (errores/Pistas.kt) va en un segundo renglon.
 private fun formatear(d: Diagnostico): String {
     val nivel = if (d.severidad == Severidad.ERROR) "Error" else "Advertencia"
-    val base = "$nivel [${d.codigo}] en linea ${d.pos.linea}, columna ${d.pos.columna}: ${d.mensaje}"
+    // P4: si el diagnostico vino de un paquete, lo nombra ("en util,
+    // linea 5..."); en el archivo principal queda como siempre.
+    val origen = d.pos.archivo?.let { "en $it, " } ?: "en "
+    val base = "$nivel [${d.codigo}] ${origen}linea ${d.pos.linea}, columna ${d.pos.columna}: ${d.mensaje}"
     return d.pista?.let { "$base\n  Pista: $it" } ?: base
 }
 

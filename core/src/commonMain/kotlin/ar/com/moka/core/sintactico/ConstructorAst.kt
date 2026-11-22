@@ -42,7 +42,13 @@ import org.antlr.v4.kotlinruntime.Token
 import org.antlr.v4.kotlinruntime.tree.ParseTree
 import org.antlr.v4.kotlinruntime.tree.TerminalNode
 
-class ConstructorAst private constructor(private val primerId: Int) : MokaBaseVisitor<Nodo?>() {
+// `archivo` (P4): nombre del archivo que se esta construyendo; se
+// estampa en la posicion de cada nodo para que los errores sepan de
+// que archivo vinieron (clave cuando el AST une varios paquetes).
+class ConstructorAst private constructor(
+    private val primerId: Int,
+    private val archivo: String? = null
+) : MokaBaseVisitor<Nodo?>() {
 
     // Contador de ids: cada nodo creado se lleva el siguiente. Los hijos se
     // construyen antes que los padres, asi que los ids crecen de las hojas
@@ -60,8 +66,8 @@ class ConstructorAst private constructor(private val primerId: Int) : MokaBaseVi
     companion object {
         // Punto de entrada comodo: ids frescos en cada llamada.
         // Uso:  ConstructorAst.construir(parser.programa())
-        fun construir(programa: MokaParser.ProgramaContext, primerId: Int = 1): ProgramaAst =
-            ConstructorAst(primerId).visitPrograma(programa)
+        fun construir(programa: MokaParser.ProgramaContext, primerId: Int = 1, archivo: String? = null): ProgramaAst =
+            ConstructorAst(primerId, archivo).visitPrograma(programa)
     }
 
     // ------------------------- utilidades internas -------------------------
@@ -81,7 +87,8 @@ class ConstructorAst private constructor(private val primerId: Int) : MokaBaseVi
                 fin.charPositionInLine + (fin.text?.length ?: 1) - 1
             } else {
                 ini?.charPositionInLine ?: 0
-            }
+            },
+            archivo = archivo
         )
     }
 

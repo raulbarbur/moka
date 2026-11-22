@@ -37,11 +37,13 @@ import org.antlr.v4.kotlinruntime.tree.TerminalNode
 
 class AnalizadorSintactico {
 
-    fun analizar(fuente: String, primerId: Int = 1): ResultadoSintactico {
+    // `archivo` (P4): nombre del archivo analizado; los SIN- y las
+    // posiciones del AST lo llevan estampado.
+    fun analizar(fuente: String, primerId: Int = 1, archivo: String? = null): ResultadoSintactico {
         val lexer = MokaLexer(CharStreams.fromString(fuente))
         lexer.removeErrorListeners() // los errores lexicos llegan como tokens (sec. 3.2)
         val parser = MokaParser(CommonTokenStream(lexer))
-        val escuchador = EscuchadorErrores()
+        val escuchador = EscuchadorErrores(archivo)
         parser.removeErrorListeners()
         parser.addErrorListener(escuchador)
 
@@ -51,7 +53,7 @@ class AnalizadorSintactico {
         val arbol = copiarRaiz(arbolAntlr, parser, lexer)
         val diagnosticos = escuchador.diagnosticos
         // Sec. 4.7: ast = null si hubo errores.
-        val ast = if (diagnosticos.isEmpty()) ConstructorAst.construir(arbolAntlr, primerId) else null
+        val ast = if (diagnosticos.isEmpty()) ConstructorAst.construir(arbolAntlr, primerId, archivo) else null
         return ResultadoSintactico(arbol, ast, diagnosticos)
     }
 
@@ -105,7 +107,7 @@ class AnalizadorSintactico {
     }
 
     // Acumula los errores de sintaxis ya traducidos (sec. 4.8.2).
-    private class EscuchadorErrores : BaseErrorListener() {
+    private class EscuchadorErrores(private val archivo: String? = null) : BaseErrorListener() {
         val diagnosticos = mutableListOf<Diagnostico>()
 
         override fun syntaxError(
@@ -120,7 +122,7 @@ class AnalizadorSintactico {
                 Diagnostico(
                     Severidad.ERROR, "SIN-001",
                     TraductorErrores.traducir(msg, line, charPositionInLine),
-                    Posicion(line, charPositionInLine, line, charPositionInLine)
+                    Posicion(line, charPositionInLine, line, charPositionInLine, archivo = archivo)
                 )
             )
         }

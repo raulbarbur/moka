@@ -27,12 +27,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import ar.com.moka.app.ajustes.recordarAjustesMoka
+import ar.com.moka.app.archivos.EstadoProyecto
 import ar.com.moka.app.archivos.SesionArchivoMoka
 import ar.com.moka.app.estado.MokaControlador
 import ar.com.moka.app.ui.LocalColoresEditor
@@ -52,6 +54,9 @@ enum class TemaMoka { SISTEMA, CLARO, OSCURO }
 fun App(
     controlador: MokaControlador,
     sesionArchivo: SesionArchivoMoka,
+    // P3: carpeta proyecto compartida entre el pipeline (su proveedor ya
+    // vive en el controlador) y el menu Proyecto.
+    proyecto: EstadoProyecto,
     alSalir: () -> Unit
 ) {
     DisposableEffect(controlador) {
@@ -70,6 +75,12 @@ fun App(
         mutableStateOf(ajustes.leer("modo")?.let { runCatching { ModoTaller.valueOf(it) }.getOrNull() } ?: ModoTaller.COMPLETO)
     }
     val paneles = recordarEstadoPaneles()
+
+    // P3: la carpeta proyecto elegida la ultima vez (ajustes); una
+    // lectura en blanco cuenta como "sin carpeta".
+    LaunchedEffect(Unit) {
+        ajustes.leer("proyecto.carpeta")?.takeIf { it.isNotBlank() }?.let(proyecto::fijar)
+    }
     val oscuro = when (tema) {
         TemaMoka.SISTEMA -> isSystemInDarkTheme()
         TemaMoka.CLARO -> false
@@ -101,7 +112,8 @@ fun App(
                     },
                     tamanioFuente = paneles.tamanio(PANEL_EDITOR),
                     alCambiarTamanio = { paneles.fijarTamanio(PANEL_EDITOR, it) },
-                    paneles = paneles
+                    paneles = paneles,
+                    proyecto = proyecto
                 )
             }
         }

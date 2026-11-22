@@ -117,7 +117,7 @@ class Moka(private val configuracion: Configuracion = Configuracion()) {
         // --- Fase 1: lexica (siempre corre) ---
         eventos.add(FaseIniciada(Fase.LEXICA))
         var marca = TimeSource.Monotonic.markNow()
-        val lex = AnalizadorLexico().analizar(fuente)
+        val lex = AnalizadorLexico().analizar(fuente, configuracion.archivoPrincipal)
         eventos.add(FaseCompletada(Fase.LEXICA, Artefacto.Lexico(lex.tokens), lex.diagnosticos, marca.elapsedNow().inWholeMilliseconds))
         if (hayErrores(lex.diagnosticos)) {
             huboErrores = true
@@ -131,7 +131,7 @@ class Moka(private val configuracion: Configuracion = Configuracion()) {
         } else {
             eventos.add(FaseIniciada(Fase.SINTACTICA))
             marca = TimeSource.Monotonic.markNow()
-            val sin = AnalizadorSintactico().analizar(fuente)
+            val sin = AnalizadorSintactico().analizar(fuente, archivo = configuracion.archivoPrincipal)
             eventos.add(FaseCompletada(Fase.SINTACTICA, Artefacto.Sintactico(sin.arbol, sin.ast), sin.diagnosticos, marca.elapsedNow().inWholeMilliseconds))
             ast = sin.ast
             if (hayErrores(sin.diagnosticos)) {

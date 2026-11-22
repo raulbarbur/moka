@@ -136,6 +136,9 @@ fun PanelProblemas(
 // Una fila de diagnostico: codigo coloreado por severidad, posicion
 // (linea:columna) y el mensaje en espanol. Tocarla selecciona el rango
 // en el editor. Compartida con el panel semantico.
+// Moka 2 (P4): si el error vino de un paquete (pos.archivo != null) la
+// posicion se muestra como "(paquete:linea:columna)" y la fila NO salta
+// al editor: ese archivo no es el que se esta editando.
 @Composable
 fun FilaDiagnostico(diagnostico: Diagnostico, onSeleccionar: (Posicion) -> Unit, tamanio: Int) {
     val color = if (diagnostico.severidad == Severidad.ERROR) {
@@ -143,14 +146,20 @@ fun FilaDiagnostico(diagnostico: Diagnostico, onSeleccionar: (Posicion) -> Unit,
     } else {
         MaterialTheme.colorScheme.tertiary
     }
+    // Salta al editor solo si el error es del archivo abierto.
+    val salta = diagnostico.pos.archivo == null
     Column(
-        Modifier.fillMaxWidth().clickable { onSeleccionar(diagnostico.pos) }.padding(vertical = 3.dp)
+        Modifier.fillMaxWidth()
+            .clickable(enabled = salta) { onSeleccionar(diagnostico.pos) }
+            .padding(vertical = 3.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(diagnostico.codigo, style = MaterialTheme.typography.labelMedium, fontSize = tamanio.sp, color = color)
             Spacer(Modifier.width(8.dp))
+            val etiqueta = diagnostico.pos.archivo?.let { "($it:${diagnostico.pos.linea}:${diagnostico.pos.columna})" }
+                ?: "(${diagnostico.pos.linea}:${diagnostico.pos.columna})"
             Text(
-                "(${diagnostico.pos.linea}:${diagnostico.pos.columna})",
+                etiqueta,
                 style = MaterialTheme.typography.labelMedium,
                 fontSize = tamanio.sp,
                 color = MaterialTheme.colorScheme.outline

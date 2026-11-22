@@ -8,6 +8,7 @@ import ar.com.moka.core.pipeline.EventoPipeline
 import ar.com.moka.core.pipeline.Fase
 import ar.com.moka.core.pipeline.Moka
 import ar.com.moka.core.pipeline.Modo
+import ar.com.moka.core.paquetes.ProveedorPaquetes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -41,7 +42,10 @@ data class ControlEjecucion(
 
 @OptIn(FlowPreview::class)
 class MokaControlador(
-    private val moka: Moka = Moka(Configuracion(limiteCuadruplas = 10_000_000)),
+    // Moka 2 (P3): quien encuentra los paquetes de los `usar`. La app
+    // pasa el proveedor de su EstadoProyecto; sin el, `usar` da SEM-062.
+    proveedorPaquetes: ProveedorPaquetes? = null,
+    private val moka: Moka = Moka(Configuracion(limiteCuadruplas = 10_000_000, proveedorPaquetes = proveedorPaquetes)),
     // Inyectable para tests. Las acciones publicas se llaman desde la UI.
     private val ui: CoroutineDispatcher = Dispatchers.Main.immediate
 ) {
@@ -75,6 +79,15 @@ class MokaControlador(
                 }
             }
         }
+    }
+
+    // P3: al cambiar la carpeta proyecto, el mismo fuente puede analizar
+    // distinto (los `usar` encuentran o no sus paquetes). Fuerza una
+    // pasada nueva sin tocar el texto ni el historial de deshacer.
+    fun reanalizar() {
+        revision++
+        _estado.value = _estado.value.copy(pasoActual = null, seleccion = null)
+        cambiosFuente.value = _estado.value.fuente to revision
     }
 
     fun cambiarFuente(nueva: String) {

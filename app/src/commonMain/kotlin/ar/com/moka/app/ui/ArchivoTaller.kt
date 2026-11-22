@@ -40,6 +40,8 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import ar.com.moka.app.TemaMoka
 import ar.com.moka.app.ajustes.recordarAjustesMoka
+import ar.com.moka.app.archivos.EstadoProyecto
+import ar.com.moka.app.archivos.recordarSelectorCarpeta
 import ar.com.moka.app.archivos.ArchivoMoka
 import ar.com.moka.app.archivos.EjemplosMoka
 import ar.com.moka.app.archivos.SesionArchivoMoka
@@ -61,6 +63,8 @@ fun ArchivoTaller(
     alCambiarTamanio: (Int) -> Unit,
     // 5C: tamanos y visibilidad por panel (menu Ver -> Paneles).
     paneles: EstadoPaneles,
+    // P3: carpeta proyecto para los `usar` (menu Proyecto).
+    proyecto: EstadoProyecto,
     contenido: @Composable () -> Unit
 ) {
     val estado by controlador.estado.collectAsState()
@@ -73,6 +77,8 @@ fun ArchivoTaller(
     var esError by remember { mutableStateOf(false) }
     val ajustes = recordarAjustesMoka()
     var acercaDe by remember { mutableStateOf(false) }
+    // P3: selector de la carpeta proyecto (dialogo de cada plataforma).
+    val selectorCarpeta = recordarSelectorCarpeta()
     // Tutoriales: se abren desde Ayuda y reemplazan al taller. El indice
     // de la leccion (-1 = lista) y si estan abiertos sobreviven a rotar.
     var tutorialesAbiertos by rememberSaveable { mutableStateOf(false) }
@@ -178,6 +184,36 @@ fun ArchivoTaller(
         }
     }
 
+    // P3: elegir/olvidar la carpeta del proyecto. Elegirla re-analiza
+    // el fuente actual: los `usar` pueden empezar a resolver (o dejar
+    // de resolver) sin tocar el texto.
+    fun elegirCarpetaProyecto() {
+        if (sesion.ocupado) return
+        ambito.launch {
+            try {
+                val ruta = selectorCarpeta.elegir() ?: return@launch
+                proyecto.fijar(ruta)
+                ajustes.escribir("proyecto.carpeta", ruta)
+                controlador.reanalizar()
+                esError = false
+                mensaje = "Carpeta del proyecto: $ruta"
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                esError = true
+                mensaje = "No se pudo elegir la carpeta: ${e.message ?: "error"}"
+            }
+        }
+    }
+
+    fun olvidarCarpetaProyecto() {
+        proyecto.fijar(null)
+        ajustes.escribir("proyecto.carpeta", "")
+        controlador.reanalizar()
+        esError = false
+        mensaje = "Sin carpeta de proyecto: los 'usar' ya no cargan paquetes."
+    }
+
     Column(Modifier.fillMaxSize().onPreviewKeyEvent { evento ->
         if (evento.type != KeyEventType.KeyDown || !evento.isCtrlPressed) false else {
             when (evento.key) {
@@ -218,7 +254,10 @@ fun ArchivoTaller(
             modo = modo,
             alCambiarModo = alCambiarModo,
             alAbrirAcercaDe = { acercaDe = true },
-            alAbrirTutoriales = { tutorialesAbiertos = true }
+            alAbrirTutoriales = { tutorialesAbiertos = true },
+            carpetaProyecto = proyecto.carpeta,
+            alElegirCarpeta = ::elegirCarpetaProyecto,
+            alOlvidarCarpeta = ::olvidarCarpetaProyecto
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             if (maxWidth < 600.dp) {
@@ -326,10 +365,6 @@ fun ArchivoTaller(
 // ---- Modelo de menus ----------------------------------------------------
 // Se arma en un solo lugar; la barra solo lo dibuja.
 
-// Proyecto multi-archivo (Moka 2, fase P3): el grupo ya esta previsto pero
-// oculto hasta que exista el soporte de carpetas y paquetes.
-private const val GRUPO_PROYECTO_VISIBLE = false
-
 private fun gruposDeMenu(
     ocupado: Boolean,
     alAbrir: () -> Unit,
@@ -351,7 +386,10 @@ private fun gruposDeMenu(
     modo: ModoTaller,
     alCambiarModo: (ModoTaller) -> Unit,
     alAbrirAcercaDe: () -> Unit,
-    alAbrirTutoriales: () -> Unit
+    alAbrirTutoriales: () -> Unit,
+    carpetaProyecto: String?,
+    alElegirCarpeta: () -> Unit,
+    alOlvidarCarpeta: () -> Unit
 ): List<GrupoMenu> {
     val archivo = GrupoMenu(
         "Archivo",
@@ -409,18 +447,27 @@ private fun gruposDeMenu(
             ItemMenu("Acerca de Moka", accion = alAbrirAcercaDe)
         )
     )
+    // P3: la carpeta donde viven los .moka de los paquetes (`usar`).
     val proyecto = GrupoMenu(
         "Proyecto",
-        listOf(
-            ItemMenu("Abrir carpeta (proximamente)", habilitado = false) {},
-            ItemMenu("Archivo nuevo (proximamente)", habilitado = false) {}
-        )
+        buildList {
+            add(ItemMenu("Elegir carpeta del proyecto...", habilitado = !ocupado, accion = alElegirCarpeta))
+            if (carpetaProyecto != null) {
+                add(SeparadorMenu)
+                add(RotuloMenu("Carpeta actual"))
+                add(ItemMenu(carpetaProyecto, habilitado = false) {})
+                add(ItemMenu("Olvidar carpeta", habilitado = !ocupado, accion = alOlvidarCarpeta))
+            } else {
+                add(SeparadorMenu)
+                add(RotuloMenu("Sin carpeta: 'usar' no carga paquetes"))
+            }
+        }
     )
     return buildList {
         add(archivo)
         add(editar)
         add(ver)
-        if (GRUPO_PROYECTO_VISIBLE) add(proyecto)
+        add(proyecto)
         add(ayuda)
     }
 }

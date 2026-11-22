@@ -60,6 +60,7 @@ import ar.com.moka.app.ajustes.recordarAjustesMoka
 import ar.com.moka.app.TemaMoka
 import ar.com.moka.app.archivos.SesionArchivoMoka
 import ar.com.moka.app.estado.EstadoWorkbench
+import ar.com.moka.app.archivos.EstadoProyecto
 import ar.com.moka.app.estado.MokaControlador
 import ar.com.moka.core.ast.Posicion
 import ar.com.moka.core.pipeline.Artefacto
@@ -89,7 +90,9 @@ fun Taller(
     alCambiarModo: (ModoTaller) -> Unit,
     tamanioFuente: Int,
     alCambiarTamanio: (Int) -> Unit,
-    paneles: EstadoPaneles
+    paneles: EstadoPaneles,
+    // P3: carpeta proyecto (menu Proyecto de ArchivoTaller).
+    proyecto: EstadoProyecto
 ) {
     val estado by controlador.estado.collectAsState()
 
@@ -105,7 +108,7 @@ fun Taller(
         LocalOpcionesEditor provides opciones,
         LocalSaltoEditor provides salto
     ) {
-        ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema, modo, alCambiarModo, tamanioFuente, alCambiarTamanio, paneles) {
+        ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema, modo, alCambiarModo, tamanioFuente, alCambiarTamanio, paneles, proyecto) {
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 // Angosto por ancho O por altura: landscape de telefono cae
                 // en pestañas aunque su ancho parezca de tablet.
