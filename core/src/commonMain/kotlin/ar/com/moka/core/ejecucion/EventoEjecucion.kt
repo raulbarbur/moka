@@ -44,6 +44,24 @@ sealed class EventoEjecucion {
     // El programa termino sin errores, con la cantidad de cuadruplas
     // ejecutadas (informativa; la GUI puede ignorarla).
     data class Fin(val cuadruplasEjecutadas: Long) : EventoEjecucion()
+
+    // ---------------------- consola con estilo ----------------------
+    // Eventos de los builtins de consola limpiar(), color(...) y
+    // titulo(...). La maquina no toca pantalla: emite el pedido y cada
+    // frente lo lleva a su consola (GUI: panel Consola; CLI: ANSI).
+    // `pausa(ms)` no tiene evento: la maquina espera sola con delay().
+
+    // limpiar(): vaciar toda la salida acumulada de la consola.
+    object LimpiarConsola : EventoEjecucion()
+
+    // color("rojo") cambia el color del texto que se imprima DESPUES;
+    // restaurar_color() emite el mismo evento con color null (volver al
+    // color por defecto). El nombre ya viene normalizado por la maquina.
+    data class ColorConsola(val color: String?) : EventoEjecucion()
+
+    // titulo("..."): titulo de la consola (la GUI lo muestra en el
+    // encabezado del panel; la CLI lo manda al titulo de la terminal).
+    data class TituloConsola(val titulo: String) : EventoEjecucion()
 }
 
 // Vista de texto de la pila de marcos para el modo paso a paso: cada

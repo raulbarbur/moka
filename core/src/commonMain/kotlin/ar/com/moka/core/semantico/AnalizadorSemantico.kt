@@ -143,6 +143,13 @@ class AnalizadorSemantico {
         b("a_flotante", TFlotante)
         b("a_cadena", TCadena)
         b("a_booleano", TBooleano)
+        // Consola con estilo: limpiar, color, restaurar_color, pausa y
+        // titulo. Devuelven vacio: son instrucciones, no valores.
+        b("limpiar", TVacio)
+        b("color", TVacio)
+        b("restaurar_color", TVacio)
+        b("pausa", TVacio)
+        b("titulo", TVacio)
     }
 
     // Primer tiempo de las clases: solo el nombre. Una clase puede

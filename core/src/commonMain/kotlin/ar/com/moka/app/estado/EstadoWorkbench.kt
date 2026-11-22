@@ -33,7 +33,13 @@ data class EstadoFaseUi(
 
 // Una linea de la consola del Taller. esError la pinta en rojo (los
 // errores de ejecucion tambien aparecen aca, ademas de en Problemas).
-data class LineaConsola(val texto: String, val esError: Boolean = false)
+// color es el nombre canonico pedido con color("...") (ver
+// ColoresConsola en core); null es el color por defecto del tema.
+data class LineaConsola(
+    val texto: String,
+    val esError: Boolean = false,
+    val color: String? = null
+)
 
 data class EstadoWorkbench(
     val fuente: String = "",
@@ -44,7 +50,11 @@ data class EstadoWorkbench(
     val cuadruplasEjecutadas: Long? = null,   // la del evento Fin (informativa)
     val seleccion: Posicion? = null,     // sincronizacion entre paneles (sec. 5.1)
     val terminado: Boolean = false,
-    val exito: Boolean = false
+    val exito: Boolean = false,
+    // Consola con estilo: color vigente para las proximas Salidas (lo
+    // fija color()/restaurar_color()) y titulo pedido con titulo(...).
+    val colorConsola: String? = null,
+    val tituloConsola: String? = null
 ) {
 
     // Todos los diagnosticos de todas las fases, en orden de fase: es lo
@@ -120,7 +130,12 @@ data class EstadoWorkbench(
 
     // Los eventos de la MaquinaTac, que llegan envueltos en DeEjecucion.
     private fun reducirEjecucion(evento: EventoEjecucion): EstadoWorkbench = when (evento) {
-        is EventoEjecucion.Salida -> copy(salida = salida + LineaConsola(evento.texto))
+        // Cada Salida hereda el color vigente al momento de imprimirse:
+        // cambiar el color no repinta lo ya escrito, como en una consola.
+        is EventoEjecucion.Salida -> copy(salida = salida + LineaConsola(evento.texto, color = colorConsola))
+        is EventoEjecucion.LimpiarConsola -> copy(salida = emptyList())
+        is EventoEjecucion.ColorConsola -> copy(colorConsola = evento.color)
+        is EventoEjecucion.TituloConsola -> copy(tituloConsola = evento.titulo)
         is EventoEjecucion.PidiendoEntrada -> copy(pidiendoEntrada = true)
         is EventoEjecucion.Paso -> copy(pasoActual = evento, pidiendoEntrada = false)
         is EventoEjecucion.ErrorEjecucion ->

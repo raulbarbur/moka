@@ -39,10 +39,30 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ar.com.moka.app.estado.LineaConsola
+
+// Los nombres de ColoresConsola (core) traducidos a Color de Compose.
+// Hay dos variantes por nombre: la consola usa el fondo surfaceVariant
+// del tema, y un amarillo de consola clasica desaparece sobre un fondo
+// claro, asi que se elige segun el tema activo. Un nombre desconocido
+// devuelve null y el texto sale con el color por defecto.
+private fun colorDeConsola(nombre: String, oscuro: Boolean): Color? = when (nombre) {
+    "rojo" -> if (oscuro) Color(0xFFFF8A80) else Color(0xFFC62828)
+    "verde" -> if (oscuro) Color(0xFFA5D6A7) else Color(0xFF2E7D32)
+    "azul" -> if (oscuro) Color(0xFF90CAF9) else Color(0xFF1565C0)
+    "amarillo" -> if (oscuro) Color(0xFFFFF59D) else Color(0xFF8D6E00)
+    "celeste" -> if (oscuro) Color(0xFF80DEEA) else Color(0xFF00838F)
+    "magenta" -> if (oscuro) Color(0xFFE1BEE7) else Color(0xFF7B1FA2)
+    "naranja" -> if (oscuro) Color(0xFFFFCC80) else Color(0xFFEF6C00)
+    "rosa" -> if (oscuro) Color(0xFFF8BBD0) else Color(0xFFAD1457)
+    "gris" -> if (oscuro) Color(0xFFB0BEC5) else Color(0xFF546E7A)
+    "blanco" -> if (oscuro) Color(0xFFFFFFFF) else Color(0xFF212121)
+    else -> null
+}
 
 @Composable
 fun ConsolaTaller(
@@ -53,12 +73,18 @@ fun ConsolaTaller(
     onEnviar: (String) -> Unit,
     // 5C: tamano de letra propio del panel (Ctrl + rueda sobre la consola).
     tamanio: Int,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Titulo pedido por el programa con titulo("..."): se muestra junto
+    // al encabezado. null: la consola aun no tiene titulo propio.
+    titulo: String? = null
 ) {
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Consola", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    if (titulo == null) "Consola" else "Consola · $titulo",
+                    style = MaterialTheme.typography.labelLarge
+                )
                 if (terminado) {
                     Spacer(Modifier.width(12.dp))
                     Text(
@@ -81,8 +107,11 @@ fun ConsolaTaller(
                 // programa (antes cada trozo ocupaba su propia fila y se
                 // veian lineas en blanco y cortes de mas). Los mensajes de
                 // error se pintan en rojo y siempre en su propia linea.
+                // Cada trozo se dibuja con el color que estaba vigente al
+                // imprimirse (builtin color), salvo el error, que manda.
                 val colorError = MaterialTheme.colorScheme.error
-                val texto = remember(salida, colorError) {
+                val fondoOscuro = MaterialTheme.colorScheme.surfaceVariant.let { it.red * 0.299f + it.green * 0.587f + it.blue * 0.114f < 0.5f }
+                val texto = remember(salida, colorError, fondoOscuro) {
                     buildAnnotatedString {
                         var alInicioDeLinea = true
                         for (linea in salida) {
@@ -92,7 +121,12 @@ fun ConsolaTaller(
                                 append("\n")
                                 alInicioDeLinea = true
                             } else if (linea.texto.isNotEmpty()) {
-                                append(linea.texto)
+                                val tinte = linea.color?.let { colorDeConsola(it, fondoOscuro) }
+                                if (tinte != null) {
+                                    withStyle(SpanStyle(color = tinte)) { append(linea.texto) }
+                                } else {
+                                    append(linea.texto)
+                                }
                                 alInicioDeLinea = linea.texto.last() == '\n'
                             }
                         }

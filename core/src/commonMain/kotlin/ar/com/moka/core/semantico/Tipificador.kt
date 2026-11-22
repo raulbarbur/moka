@@ -34,6 +34,7 @@
 package ar.com.moka.core.semantico
 
 import ar.com.moka.core.ast.*
+import ar.com.moka.core.ejecucion.ColoresConsola
 
 // Texto corto de una expresion, para chequeos y mensajes: "i < 10",
 // "nuevo Alumno(\"Ana\")". No es el fuente exacto: es una descripcion
@@ -561,6 +562,46 @@ internal class Tipificador(private val a: AnalizadorSemantico) {
             }
             "leer", "leer_entero", "leer_flotante" -> {
                 cantidad(0)
+            }
+            // Consola con estilo. limpiar y restaurar_color no llevan
+            // argumentos; color y titulo esperan una cadena; pausa, un
+            // entero de milisegundos. Con un literal de color se valida
+            // el nombre ya en compilacion (SEM-061), lo mismo que la
+            // maquina hace en ejecucion (EJE-009).
+            "limpiar", "restaurar_color" -> {
+                cantidad(0)
+            }
+            "color" -> {
+                if (!cantidad(1)) return
+                val t = tiparValor(e.args[0], amb)
+                val ok = t is TCadena || t is TError
+                a.registrarChequeo(e.args[0].pos, textoDe(e.args[0]), "color: cadena -> vacio", TCadena, t, ok)
+                if (!ok) {
+                    a.diag.error("SEM-058", "'color' espera una cadena con el nombre del color (por ejemplo \"rojo\"), pero recibio ${t.descripcion}.", e.args[0].pos)
+                } else {
+                    val lit = e.args[0] as? LitCadena
+                    if (lit != null && ColoresConsola.normalizar(lit.valor) == null) {
+                        a.diag.error("SEM-061", "Color desconocido: \"${lit.valor}\". Los colores son: ${ColoresConsola.lista}.", lit.pos)
+                    }
+                }
+            }
+            "titulo" -> {
+                if (!cantidad(1)) return
+                val t = tiparValor(e.args[0], amb)
+                val ok = t is TCadena || t is TError
+                a.registrarChequeo(e.args[0].pos, textoDe(e.args[0]), "titulo: cadena -> vacio", TCadena, t, ok)
+                if (!ok) {
+                    a.diag.error("SEM-059", "'titulo' espera una cadena, pero recibio ${t.descripcion}.", e.args[0].pos)
+                }
+            }
+            "pausa" -> {
+                if (!cantidad(1)) return
+                val t = tiparValor(e.args[0], amb)
+                val ok = t is TEntero || t is TError
+                a.registrarChequeo(e.args[0].pos, textoDe(e.args[0]), "pausa: entero (milisegundos) -> vacio", TEntero, t, ok)
+                if (!ok) {
+                    a.diag.error("SEM-060", "'pausa' espera un entero de milisegundos (por ejemplo pausa(500)), pero recibio ${t.descripcion}.", e.args[0].pos)
+                }
             }
             "longitud" -> {
                 if (!cantidad(1)) return

@@ -67,6 +67,14 @@ fun main(args: Array<String>) {
                     is EventoEjecucion.Salida -> print(ev.texto)
                     is EventoEjecucion.ErrorEjecucion -> System.err.println(formatear(ev.diagnostico))
                     is EventoEjecucion.Paso -> imprimirPaso(ev)
+                    // Consola con estilo, en ANSI estandar: limpiar borra
+                    // la pantalla y vuelve al origen; color fija el color
+                    // de primer plano (null: restaurar); titulo cambia el
+                    // titulo de la ventana de la terminal.
+                    EventoEjecucion.LimpiarConsola -> print("\u001B[2J\u001B[H")
+                    is EventoEjecucion.ColorConsola ->
+                        print(ev.color?.let { "\u001B[${ansiDe(it)}m" } ?: "\u001B[0m")
+                    is EventoEjecucion.TituloConsola -> print("\u001B]0;${ev.titulo}\u0007")
                     else -> {} // PidiendoEntrada y Fin no necesitan salida en la CLI
                 }
                 is EventoPipeline.Terminado -> ok = evento.exito
@@ -82,6 +90,21 @@ fun main(args: Array<String>) {
 private fun formatear(d: Diagnostico): String {
     val nivel = if (d.severidad == Severidad.ERROR) "Error" else "Advertencia"
     return "$nivel [${d.codigo}] en linea ${d.pos.linea}, columna ${d.pos.columna}: ${d.mensaje}"
+}
+
+// Los nombres de ColoresConsola (core) a codigos ANSI de primer plano.
+private fun ansiDe(nombre: String): String = when (nombre) {
+    "rojo" -> "31"
+    "verde" -> "32"
+    "amarillo" -> "33"
+    "azul" -> "34"
+    "magenta" -> "35"
+    "celeste" -> "36"
+    "gris" -> "90"
+    "blanco" -> "97"
+    "naranja" -> "38;5;208"
+    "rosa" -> "38;5;213"
+    else -> "0"
 }
 
 // En modo paso a paso se ve cada cuadrupla con el marco actual (sec. 4.6).

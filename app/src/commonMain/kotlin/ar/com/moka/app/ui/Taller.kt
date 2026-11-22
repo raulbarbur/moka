@@ -44,6 +44,7 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -55,10 +56,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import ar.com.moka.app.ajustes.recordarAjustesMoka
 import ar.com.moka.app.TemaMoka
 import ar.com.moka.app.archivos.SesionArchivoMoka
 import ar.com.moka.app.estado.EstadoWorkbench
 import ar.com.moka.app.estado.MokaControlador
+import ar.com.moka.core.ast.Posicion
 import ar.com.moka.core.pipeline.Artefacto
 import ar.com.moka.core.pipeline.Fase
 
@@ -90,52 +93,65 @@ fun Taller(
 ) {
     val estado by controlador.estado.collectAsState()
 
-    ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema, modo, alCambiarModo, tamanioFuente, alCambiarTamanio, paneles) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            // Angosto por ancho O por altura: landscape de telefono cae
-            // en pestañas aunque su ancho parezca de tablet.
-            val angosto = maxWidth < ANCHO_MINIMO_MUELLES || maxHeight < ALTURA_MINIMA_MUELLES
-            val simple = modo == ModoTaller.SIMPLE
-            Column(Modifier.fillMaxSize()) {
-                BarraAcciones(controlador, angosto || simple, simple)
-                if (!simple) {
-                    BarraDepuracion(controlador)
+    // Estado compartido del editor, repartido por CompositionLocal para que
+    // los menus (ArchivoTaller) y el editor se hablen sin parametros extra.
+    val ajustes = recordarAjustesMoka()
+    val busqueda = remember { EstadoBusqueda() }
+    val opciones = remember { OpcionesEditor().apply { autocompletado = ajustes.leer("autocompletado") != "no" } }
+    val salto = remember { PedidoSalto() }
 
-                    // La tira de fases queda en TODOS los tamaños: en
-                    // angosta se vuelve desplazable para no comprimir sus
-                    // cinco chips.
-                    BarraFases(estado.fases, compacta = angosto)
-                }
+    CompositionLocalProvider(
+        LocalBusquedaEditor provides busqueda,
+        LocalOpcionesEditor provides opciones,
+        LocalSaltoEditor provides salto
+    ) {
+        ArchivoTaller(controlador, sesionArchivo, alSalir, tema, alCambiarTema, modo, alCambiarModo, tamanioFuente, alCambiarTamanio, paneles) {
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                // Angosto por ancho O por altura: landscape de telefono cae
+                // en pestañas aunque su ancho parezca de tablet.
+                val angosto = maxWidth < ANCHO_MINIMO_MUELLES || maxHeight < ALTURA_MINIMA_MUELLES
+                val simple = modo == ModoTaller.SIMPLE
+                Column(Modifier.fillMaxSize()) {
+                    BarraAcciones(controlador, angosto || simple, simple)
+                    if (!simple) {
+                        BarraDepuracion(controlador)
 
-                if (simple) {
-                    ContenidoSimple(
-                        estado = estado,
-                        controlador = controlador,
-                        tamanioFuente = tamanioFuente,
-                        alCambiarTamanio = alCambiarTamanio,
-                        paneles = paneles,
-                        modifier = Modifier.weight(1f)
-                    )
-                } else if (angosto) {
-                    ContenidoPorPestanas(
-                        estado = estado,
-                        controlador = controlador,
-                        modificado = sesionArchivo.hayCambios(estado.fuente),
-                        simple = false,
-                        tamanioFuente = tamanioFuente,
-                        alCambiarTamanio = alCambiarTamanio,
-                        paneles = paneles,
-                        modifier = Modifier.weight(1f)
-                    )
-                } else {
-                    ContenidoConMuelles(
-                        estado = estado,
-                        controlador = controlador,
-                        tamanioFuente = tamanioFuente,
-                        alCambiarTamanio = alCambiarTamanio,
-                        paneles = paneles,
-                        modifier = Modifier.weight(1f)
-                    )
+                        // La tira de fases queda en TODOS los tamaños: en
+                        // angosta se vuelve desplazable para no comprimir sus
+                        // cinco chips.
+                        BarraFases(estado.fases, compacta = angosto)
+                    }
+
+                    if (simple) {
+                        ContenidoSimple(
+                            estado = estado,
+                            controlador = controlador,
+                            tamanioFuente = tamanioFuente,
+                            alCambiarTamanio = alCambiarTamanio,
+                            paneles = paneles,
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else if (angosto) {
+                        ContenidoPorPestanas(
+                            estado = estado,
+                            controlador = controlador,
+                            modificado = sesionArchivo.hayCambios(estado.fuente),
+                            simple = false,
+                            tamanioFuente = tamanioFuente,
+                            alCambiarTamanio = alCambiarTamanio,
+                            paneles = paneles,
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        ContenidoConMuelles(
+                            estado = estado,
+                            controlador = controlador,
+                            tamanioFuente = tamanioFuente,
+                            alCambiarTamanio = alCambiarTamanio,
+                            paneles = paneles,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
@@ -269,7 +285,7 @@ private fun ContenidoConMuelles(
                     }
                     PanelesTaller(
                         estado = estado,
-                        onSeleccionar = controlador::seleccionar,
+                        onSeleccionar = rememberSeleccionar(controlador),
                         paneles = paneles,
                         modifier = Modifier.weight(1f - fraccionEditor).fillMaxHeight()
                             .padding(end = 12.dp, bottom = 4.dp)
@@ -289,6 +305,7 @@ private fun ContenidoConMuelles(
                             terminado = estado.terminado,
                             exito = estado.exito,
                             onEnviar = controlador::enviarEntrada,
+                            titulo = estado.tituloConsola,
                             tamanio = paneles.tamanio(PANEL_CONSOLA),
                             modifier = Modifier.weight(if (hayProblemas) fraccionConsola else 1f)
                                 .fillMaxHeight()
@@ -304,7 +321,7 @@ private fun ContenidoConMuelles(
                     if (hayProblemas) {
                         PanelProblemas(
                             fases = estado.fases,
-                            onSeleccionar = controlador::seleccionar,
+                            onSeleccionar = rememberSeleccionar(controlador),
                             tamanio = paneles.tamanio(PANEL_PROBLEMAS),
                             modifier = Modifier.weight(if (hayConsola) 1f - fraccionConsola else 1f)
                                 .fillMaxHeight()
@@ -361,6 +378,7 @@ private fun ContenidoSimple(
                     terminado = estado.terminado,
                     exito = estado.exito,
                     onEnviar = controlador::enviarEntrada,
+                    titulo = estado.tituloConsola,
                     tamanio = paneles.tamanio(PANEL_CONSOLA),
                     modifier = Modifier.fillMaxWidth().weight(1f - fraccionCodigo)
                         .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
@@ -444,23 +462,37 @@ private fun ContenidoPorPestanas(
                     terminado = estado.terminado,
                     exito = estado.exito,
                     onEnviar = controlador::enviarEntrada,
+                    titulo = estado.tituloConsola,
                     tamanio = paneles.tamanio(PANEL_CONSOLA),
                     modifier = contenido.zoomPanel(paneles, PANEL_CONSOLA)
                 )
                 PANEL_PROBLEMAS -> PanelProblemas(
                     fases = estado.fases,
-                    onSeleccionar = controlador::seleccionar,
+                    onSeleccionar = rememberSeleccionar(controlador),
                     tamanio = paneles.tamanio(PANEL_PROBLEMAS),
                     modifier = contenido.zoomPanel(paneles, PANEL_PROBLEMAS)
                 )
                 else -> PanelFase(
                     panelId = id,
                     estado = estado,
-                    onSeleccionar = controlador::seleccionar,
+                    onSeleccionar = rememberSeleccionar(controlador),
                     paneles = paneles,
                     modifier = contenido.zoomPanel(paneles, id)
                 )
             }
+        }
+    }
+}
+
+// Seleccionar una posicion (error, token, nodo) y pedirle al editor que
+// se desplace hasta ahi, incluso si es la misma posicion de la vez anterior.
+@Composable
+private fun rememberSeleccionar(controlador: MokaControlador): (Posicion?) -> Unit {
+    val salto = LocalSaltoEditor.current
+    return remember(controlador, salto) {
+        { pos: Posicion? ->
+            salto.version++
+            controlador.seleccionar(pos)
         }
     }
 }

@@ -25,8 +25,10 @@
 //    - 4.6: limite de cuadruplas para la GUI (EJE-007); la CLI no pone.
 //    - 2.9: division/resto por cero (EJE-001/002), indice fuera de rango
 //           (EJE-003), acceso a nulo (EJE-004), entrada invalida
-//           (EJE-005), tamano negativo de arreglo (EJE-008).
-//    - 2.8: las funciones builtin (imprimir, leer, longitud, a_*) no se
+//           (EJE-005), tamano negativo de arreglo (EJE-008), color de
+//           consola desconocido (EJE-009), pausa negativa (EJE-010).
+//    - 2.8: las funciones builtin (imprimir, leer, longitud, a_*,
+//           limpiar, color, restaurar_color, pausa, titulo) no se
 //           apilan: se resuelven inline en `llamar`.
 //    - 2.6: imprimir un objeto usa su a_cadena() propio si existe (se
 //           ejecuta como una llamada anidada real); si no, "Clase@id".
@@ -53,6 +55,7 @@ import ar.com.moka.core.tac.Operando
 import ar.com.moka.core.tac.ProgramaTac
 import ar.com.moka.core.tac.Valor
 import kotlin.math.abs
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
@@ -511,6 +514,31 @@ class MaquinaTac(
                 is Valor.VCadena -> Valor.VEntero(a.v.length)
                 else -> Valor.VEntero(0)
             }
+            // ------- consola con estilo (sec. 2.8 ampliada) -------
+            // limpiar, color, restaurar_color y titulo se traducen a
+            // eventos; el frente (GUI/CLI) los lleva a su consola.
+            // pausa no emite nada: espera aca mismo, sin bloquear el
+            // hilo (delay suspende la corrutina).
+            "limpiar" -> emit(EventoEjecucion.LimpiarConsola)
+            "color" -> {
+                val pedido = cadenaDe(args.getOrElse(0) { Valor.VNulo })
+                val canonico = ColoresConsola.normalizar(pedido)
+                    ?: throw ErrorMoka(
+                        "EJE-009",
+                        "Color desconocido: '$pedido'. Los colores son: ${ColoresConsola.lista}.",
+                        c.origen
+                    )
+                emit(EventoEjecucion.ColorConsola(canonico))
+            }
+            "restaurar_color" -> emit(EventoEjecucion.ColorConsola(null))
+            "titulo" -> emit(EventoEjecucion.TituloConsola(cadenaDe(args.getOrElse(0) { Valor.VNulo })))
+            "pausa" -> {
+                val ms = enteroDe(args.getOrElse(0) { Valor.VNulo })
+                if (ms < 0) {
+                    throw ErrorMoka("EJE-010", "pausa espera milisegundos mayores o iguales a 0, pero recibio $ms.", c.origen)
+                }
+                delay(ms.toLong())
+            }
             "a_entero" -> return Valor.VEntero(aEntero(args.getOrElse(0) { Valor.VNulo }, c.origen))
             "a_flotante" -> return Valor.VFlotante(aFlotante(args.getOrElse(0) { Valor.VNulo }, c.origen))
             "a_cadena" -> return Valor.VCadena(aCadenaDe(args.getOrElse(0) { Valor.VNulo }, c.origen))
@@ -640,7 +668,8 @@ class MaquinaTac(
             "imprimir", "imprimir_sin_salto",
             "leer", "leer_entero", "leer_flotante",
             "longitud",
-            "a_entero", "a_flotante", "a_cadena", "a_booleano"
+            "a_entero", "a_flotante", "a_cadena", "a_booleano",
+            "limpiar", "color", "restaurar_color", "pausa", "titulo"
         )
     }
 }

@@ -1,4 +1,4 @@
-// EjemplosMoka.kt - Copias de ejemplos/hola.moka y ejemplos/fizzbuzz.moka.
+// EjemplosMoka.kt - Copias de los ejemplos de ejemplos/.
 // Se incluyen en el codigo para funcionar en desktop empaquetado y
 // Android, sin depender del directorio de trabajo ni agregar recursos.
 // Si se modifica un ejemplo en ejemplos/, actualizar tambien esta copia.
@@ -30,6 +30,26 @@ object EjemplosMoka {
                         }
                     }
                 }
+            """.trimIndent() + "\n"
+        ),
+        ArchivoMoka(
+            nombre = "consola.moka",
+            contenido = """
+                // Consola con estilo: titulo, color, pausa y limpiar.
+                titulo("Demo de consola");
+                color("celeste");
+                imprimir("=== Moka ===");
+                restaurar_color();
+                imprimir("Texto normal.");
+                color("verde");
+                imprimir("Texto en verde.");
+                color("rojo");
+                imprimir("Texto en rojo.");
+                restaurar_color();
+                imprimir("Se limpia la consola en un segundo...");
+                pausa(1000);
+                limpiar();
+                imprimir("Consola limpia: la salida anterior ya no esta.");
             """.trimIndent() + "\n"
         )
     )

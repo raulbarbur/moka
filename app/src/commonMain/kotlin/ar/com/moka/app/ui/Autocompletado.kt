@@ -23,7 +23,8 @@ object Autocompletado {
     // Funciones incorporadas del lenguaje (AnalizadorSemantico.registrarBuiltins).
     val FUNCIONES_INCORPORADAS: List<String> = listOf(
         "imprimir", "imprimir_sin_salto", "leer", "leer_entero", "leer_flotante",
-        "longitud", "a_entero", "a_flotante", "a_cadena", "a_booleano"
+        "longitud", "a_entero", "a_flotante", "a_cadena", "a_booleano",
+        "limpiar", "color", "restaurar_color", "pausa", "titulo"
     )
 
     // Palabras reservadas: el lexema entre comillas simples de REGLAS_TOKEN

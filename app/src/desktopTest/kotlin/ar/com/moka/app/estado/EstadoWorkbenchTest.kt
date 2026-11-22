@@ -255,4 +255,44 @@ class EstadoWorkbenchTest {
         assertFalse(vivo.terminado)
         assertEquals(1, vivo.salida.size) // la consola conserva la historia
     }
+
+    // ---------------------- consola con estilo ----------------------
+
+    @Test
+    fun limpiarConsolaVaciaLaSalidaAcumulada() {
+        val estado = EstadoWorkbench.vacio()
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.Salida("antes\n")))
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.LimpiarConsola))
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.Salida("despues\n")))
+        assertEquals(listOf("despues\n"), estado.salida.map { it.texto })
+    }
+
+    @Test
+    fun cadaSalidaHeredaElColorVigenteAlImprimirse() {
+        val estado = EstadoWorkbench.vacio()
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.Salida("normal\n")))
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.ColorConsola("verde")))
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.Salida("en verde\n")))
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.ColorConsola(null)))
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.Salida("normal otra vez\n")))
+        // Cambiar el color no repinta lo ya escrito.
+        assertEquals(listOf(null, "verde", null), estado.salida.map { it.color })
+    }
+
+    @Test
+    fun limpiarConservaElColorVigente() {
+        // Como en una consola real: borrar la pantalla no cambia la tinta.
+        val estado = EstadoWorkbench.vacio()
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.ColorConsola("rojo")))
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.LimpiarConsola))
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.Salida("sigue rojo\n")))
+        assertEquals("rojo", estado.salida.single().color)
+    }
+
+    @Test
+    fun tituloConsolaSeGuardaEnElEstado() {
+        val estado = EstadoWorkbench.vacio()
+            .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.TituloConsola("Mi juego")))
+        assertEquals("Mi juego", estado.tituloConsola)
+    }
 }
