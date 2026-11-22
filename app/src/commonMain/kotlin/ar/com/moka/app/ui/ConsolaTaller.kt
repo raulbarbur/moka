@@ -39,30 +39,13 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ar.com.moka.app.estado.LineaConsola
 
-// Los nombres de ColoresConsola (core) traducidos a Color de Compose.
-// Hay dos variantes por nombre: la consola usa el fondo surfaceVariant
-// del tema, y un amarillo de consola clasica desaparece sobre un fondo
-// claro, asi que se elige segun el tema activo. Un nombre desconocido
-// devuelve null y el texto sale con el color por defecto.
-private fun colorDeConsola(nombre: String, oscuro: Boolean): Color? = when (nombre) {
-    "rojo" -> if (oscuro) Color(0xFFFF8A80) else Color(0xFFC62828)
-    "verde" -> if (oscuro) Color(0xFFA5D6A7) else Color(0xFF2E7D32)
-    "azul" -> if (oscuro) Color(0xFF90CAF9) else Color(0xFF1565C0)
-    "amarillo" -> if (oscuro) Color(0xFFFFF59D) else Color(0xFF8D6E00)
-    "celeste" -> if (oscuro) Color(0xFF80DEEA) else Color(0xFF00838F)
-    "magenta" -> if (oscuro) Color(0xFFE1BEE7) else Color(0xFF7B1FA2)
-    "naranja" -> if (oscuro) Color(0xFFFFCC80) else Color(0xFFEF6C00)
-    "rosa" -> if (oscuro) Color(0xFFF8BBD0) else Color(0xFFAD1457)
-    "gris" -> if (oscuro) Color(0xFFB0BEC5) else Color(0xFF546E7A)
-    "blanco" -> if (oscuro) Color(0xFFFFFFFF) else Color(0xFF212121)
-    else -> null
-}
+// Los colores del builtin color() vienen de Tema.kt (colorDeConsolaMoka):
+// toda la paleta de la app se edita en UN solo archivo.
 
 @Composable
 fun ConsolaTaller(
@@ -121,7 +104,7 @@ fun ConsolaTaller(
                                 append("\n")
                                 alInicioDeLinea = true
                             } else if (linea.texto.isNotEmpty()) {
-                                val tinte = linea.color?.let { colorDeConsola(it, fondoOscuro) }
+                                val tinte = linea.color?.let { colorDeConsolaMoka(it, fondoOscuro) }
                                 if (tinte != null) {
                                     withStyle(SpanStyle(color = tinte)) { append(linea.texto) }
                                 } else {

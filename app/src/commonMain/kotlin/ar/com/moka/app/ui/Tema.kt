@@ -1,21 +1,29 @@
 // =======================================================================
 //  Tema.kt - Paleta de colores de Moka (UN solo lugar para editar)
 // =======================================================================
-//  Los dos esquemas siguen la paleta de IntelliJ / Android Studio:
+//  COMO PERSONALIZAR MOKA: todos los colores viven en este archivo, en
+//  tres grupos. Cambia los valores del grupo que quieras y recompila;
+//  ningun otro archivo hardcodea colores.
+//
+//    1. UI general (botones, paneles, dialogos): las constantes
+//       CLARO_* / OSCURO_* de abajo, que arman el ColorScheme.
+//    2. Resaltado del editor: coloresEditorMoka() (palabra clave,
+//       literal, delimitador, error, advertencia, seleccion).
+//    3. Consola con color(): coloresConsolaMoka() da la variante clara y
+//       oscura de cada color del builtin color("...").
+//
+//  Los dos esquemas siguen la paleta de IntelliJ:
 //    - Claro: tema "Light" por defecto de IntelliJ.
 //    - Oscuro (5B, a pedido): el tema oscuro actual de Android Studio
 //      (New UI): fondo #1E1F22, paneles #242528, texto #BCBEC4. Antes
 //      era Darcula clasico (#2B2B2B), que quedaba claro al lado del
 //      entorno.
 //
-//  Hay dos piezas:
-//    1. esquemaClaroMoka()/esquemaOscuroMoka(): el ColorScheme de toda la
-//       UI (botones, paneles, dialogos). primary es el color de accion.
-//    2. ColoresEditorMoka: los colores del resaltado de sintaxis, que en
-//       IntelliJ no siguen al color de accion (palabra clave azul oscuro
-//       en Light, naranja en oscuro; literales siempre verdes). Llegan
-//       al editor por LocalColoresEditor, asi EditorTaller no hardcodea
-//       nada y un tema futuro personalizable solo toca este archivo.
+//  ColoresEditorMoka y ColoresConsolaMoka no siguen al color de accion:
+//  en IntelliJ la sintaxis tiene sus propios colores (palabra clave azul
+//  oscuro en Light, naranja en Darcula; literales siempre verdes). El
+//  editor los recibe por LocalColoresEditor y la consola llama a
+//  colorDeConsolaMoka(), asi ninguno hardcodea nada.
 // =======================================================================
 package ar.com.moka.app.ui
 
@@ -104,6 +112,7 @@ data class ColoresEditorMoka(
     val literal: Color,
     val delimitador: Color,
     val error: Color,
+    val advertencia: Color,
     val seleccion: Color
 )
 
@@ -114,6 +123,7 @@ val LocalColoresEditor = staticCompositionLocalOf {
         literal = Color(0xFF067D17),
         delimitador = Color(0xFF6E6E6E),
         error = CLARO_ERROR,
+        advertencia = Color(0xFFB8860B),
         seleccion = CLARO_AZUL.copy(alpha = 0.25f)
     )
 }
@@ -125,6 +135,7 @@ fun coloresEditorMoka(oscuro: Boolean): ColoresEditorMoka =
             literal = Color(0xFF6AAB73),      // verde literales
             delimitador = Color(0xFF8C8C8C),
             error = OSCURO_ERROR,
+            advertencia = Color(0xFFBBB529),  // ambar Darcula
             seleccion = OSCURO_AZUL.copy(alpha = 0.35f)
         )
     } else {
@@ -133,6 +144,53 @@ fun coloresEditorMoka(oscuro: Boolean): ColoresEditorMoka =
             literal = Color(0xFF067D17),      // verde IntelliJ
             delimitador = Color(0xFF6E6E6E),
             error = CLARO_ERROR,
+            advertencia = Color(0xFFB8860B),  // ambar oscuro legible en blanco
             seleccion = CLARO_AZUL.copy(alpha = 0.25f)
         )
     }
+
+// ---------- Consola: los colores del builtin color("...") ----------
+// Los nombres validos los define ColoresConsola en core; aca solo esta
+// su pinta. Cada color tiene dos variantes porque el fondo de la consola
+// cambia con el tema: un amarillo de terminal clasica desaparece sobre
+// fondo claro. Un nombre sin entrada sale con el color por defecto.
+data class ColoresConsolaMoka(
+    val porNombre: Map<String, Color>
+)
+
+fun coloresConsolaMoka(oscuro: Boolean): ColoresConsolaMoka =
+    if (oscuro) {
+        ColoresConsolaMoka(
+            mapOf(
+                "rojo" to Color(0xFFFF8A80),
+                "verde" to Color(0xFFA5D6A7),
+                "azul" to Color(0xFF90CAF9),
+                "amarillo" to Color(0xFFFFF59D),
+                "celeste" to Color(0xFF80DEEA),
+                "magenta" to Color(0xFFE1BEE7),
+                "naranja" to Color(0xFFFFCC80),
+                "rosa" to Color(0xFFF8BBD0),
+                "gris" to Color(0xFFB0BEC5),
+                "blanco" to Color(0xFFFFFFFF)
+            )
+        )
+    } else {
+        ColoresConsolaMoka(
+            mapOf(
+                "rojo" to Color(0xFFC62828),
+                "verde" to Color(0xFF2E7D32),
+                "azul" to Color(0xFF1565C0),
+                "amarillo" to Color(0xFF8D6E00),
+                "celeste" to Color(0xFF00838F),
+                "magenta" to Color(0xFF7B1FA2),
+                "naranja" to Color(0xFFEF6C00),
+                "rosa" to Color(0xFFAD1457),
+                "gris" to Color(0xFF546E7A),
+                "blanco" to Color(0xFF212121)
+            )
+        )
+    }
+
+// Traduccion nombre -> Color, lo unico que usa la consola.
+fun colorDeConsolaMoka(nombre: String, oscuro: Boolean): Color? =
+    coloresConsolaMoka(oscuro).porNombre[nombre]

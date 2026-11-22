@@ -79,9 +79,8 @@ import ar.com.moka.core.lexico.Token
 import ar.com.moka.core.semantico.Diagnostico
 import ar.com.moka.core.semantico.Severidad
 
-// Ambar para las advertencias: el tema no trae un "amarillo de warning"
-// propio, y este se lee bien en tema claro y oscuro.
-private val COLOR_ADVERTENCIA = Color(0xFFB8860B)
+// El ambar de las advertencias viene del tema (ColoresEditorMoka
+// .advertencia): el ColorScheme no trae un "amarillo de warning" propio.
 
 @Composable
 fun EditorTaller(
@@ -112,7 +111,7 @@ fun EditorTaller(
     val colorSeleccion = coloresEditor.seleccion
     // Se recalcula solo cuando cambia alguna de sus entradas.
     val transformacion = remember(fuente, tokens, diagnosticos, seleccion, coloresSintaxis) {
-        PintadoEditor(fuente, tokens.orEmpty(), diagnosticos, seleccion, coloresSintaxis, colorError, colorSeleccion)
+        PintadoEditor(fuente, tokens.orEmpty(), diagnosticos, seleccion, coloresSintaxis, colorError, coloresEditor.advertencia, colorSeleccion)
     }
 
     // ---- Buscar / reemplazar (v1: literal, distingue mayusculas) ----
@@ -347,6 +346,7 @@ private class PintadoEditor(
     private val seleccion: Posicion?,
     private val coloresSintaxis: Map<CategoriaToken, Color>,
     private val colorError: Color,
+    private val colorAdvertencia: Color,
     private val colorSeleccion: Color
 ) : VisualTransformation {
 
@@ -379,7 +379,7 @@ private class PintadoEditor(
             val rango = rangoDe(inicios, fuente.length, d.pos) ?: continue
             constructor.addStyle(
                 SpanStyle(
-                    color = if (d.severidad == Severidad.ERROR) colorError else COLOR_ADVERTENCIA,
+                    color = if (d.severidad == Severidad.ERROR) colorError else colorAdvertencia,
                     textDecoration = TextDecoration.Underline
                 ),
                 rango.first, rango.second
