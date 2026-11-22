@@ -25,8 +25,12 @@ import ar.com.moka.core.ejecucion.EventoEjecucion
 import ar.com.moka.core.ejecucion.MaquinaTac
 import ar.com.moka.core.ejecucion.ConfigEjecucion
 import ar.com.moka.core.lexico.AnalizadorLexico
+import ar.com.moka.core.paquetes.ResolvedorPaquetes
 import ar.com.moka.core.pipeline.EventoPipeline.*
+import ar.com.moka.core.semantico.Ambito
 import ar.com.moka.core.semantico.AnalizadorSemantico
+import ar.com.moka.core.semantico.ContextoPaquetes
+import ar.com.moka.core.semantico.TipoAmbito
 import ar.com.moka.core.semantico.Diagnostico
 import ar.com.moka.core.semantico.ResultadoSemantico
 import ar.com.moka.core.semantico.Severidad
@@ -143,7 +147,32 @@ class Moka(private val configuracion: Configuracion = Configuracion()) {
         } else {
             eventos.add(FaseIniciada(Fase.SEMANTICA))
             marca = TimeSource.Monotonic.markNow()
-            val resultado = AnalizadorSemantico.analizar(ast)
+            // Moka 2 (P1): si el programa pide paquetes con `usar`, el
+            // resolvedor los carga y une todo en un solo AST antes del
+            // analisis. Si la carga falla, el semantico no corre y sus
+            // errores se reportan como los de la fase.
+            var resultado: ResultadoSemantico
+            if (ast.usos.isEmpty()) {
+                resultado = AnalizadorSemantico.analizar(ast)
+            } else {
+                val res = ResolvedorPaquetes(configuracion.proveedorPaquetes).resolver(ast)
+                if (res.diagnosticos.isNotEmpty()) {
+                    ast = null   // la carga fallo: no hay programa unido
+                    resultado = ResultadoSemantico(
+                        raiz = Ambito(TipoAmbito.GLOBAL, "global", padre = null, pos = null),
+                        tipos = emptyMap(),
+                        simbolos = emptyMap(),
+                        chequeos = emptyList(),
+                        diagnosticos = res.diagnosticos
+                    )
+                } else {
+                    ast = res.programa   // el TAC se genera del AST unido
+                    resultado = AnalizadorSemantico.analizar(
+                        res.programa,
+                        ContextoPaquetes(res.paqueteDe, res.usosDe)
+                    )
+                }
+            }
             eventos.add(
                 FaseCompletada(
                     Fase.SEMANTICA,

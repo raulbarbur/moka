@@ -94,8 +94,11 @@ class GeneradorTac private constructor(private val sem: ResultadoSemantico) {
         for (d in programa.declaraciones) {
             when (d) {
                 is DeclFuncion -> {
-                    val retorno = sem.raiz.funciones[d.nombre]?.tipo
-                    unidad(d.nombre, d.params.size, d.pos, retorno, idsDeParams(d.params)) {
+                    // Las funciones de paquete se nombran cualificadas
+                    // ("util.sumar"), igual que en el semantico (Moka 2, P1).
+                    val nombreReal = sem.paqueteDe[d.id]?.let { "$it.${d.nombre}" } ?: d.nombre
+                    val retorno = sem.raiz.funciones[nombreReal]?.tipo
+                    unidad(nombreReal, d.params.size, d.pos, retorno, idsDeParams(d.params)) {
                         for (s in d.cuerpo.sentencias) genSentencia(s)
                     }
                 }
@@ -134,7 +137,8 @@ class GeneradorTac private constructor(private val sem: ResultadoSemantico) {
     }
 
     private fun genClase(d: DeclClase) {
-        val clase = sem.raiz.clases[d.nombre] ?: return
+        val nombreReal = sem.paqueteDe[d.id]?.let { "$it.${d.nombre}" } ?: d.nombre
+        val clase = sem.raiz.clases[nombreReal] ?: return
         val clasePrevia = claseActual
         val estePrevio = simboloEste
         claseActual = clase
@@ -799,33 +803,41 @@ class GeneradorTac private constructor(private val sem: ResultadoSemantico) {
     // Llamada (sec. 4.5.2): los argumentos se apilan con param EN ORDEN
     // (izquierda a derecha, sec. 2.14) y llamar los consume. Devuelve el
     // temporal que recibe el retorno, o null si la funcion es vacio.
-    private fun genLlamada(e: Llamada): Operando? = when (val callee = e.callee) {
-        is Nombre -> {
-            val f = sem.simbolos[callee.id] as? SimboloFuncion ?: return null
-            genArgumentos(e.args, f.parametros, f.esBuiltin)
-            emitirLlamada(f.nombre, e.args.size, f.tipo, e.pos)
+    private fun genLlamada(e: Llamada): Operando? {
+        // Llamada a funcion de paquete (Moka 2, P1): el semantico ya la
+        // ligo a su nombre cualificado ("util.sumar").
+        sem.llamadasPaquete[e.id]?.let { f ->
+            genArgumentos(e.args, f.parametros, false)
+            return emitirLlamada(f.nombre, e.args.size, f.tipo, e.pos)
         }
-        is AccesoMiembro -> {
-            val m = sem.simbolos[callee.id]
-            if (m !is SimboloFuncion) {
-                null
-            } else if (m.esEstatico) {
-                // Util.doble(21): sin este; la clase sale del ligado del Nombre.
-                val objNombre = callee.obj as? Nombre
-                val claseNombre = (objNombre?.let { sem.simbolos[it.id] } as? SimboloClase)?.nombre
-                    ?: nombreClaseDe(callee.obj)
-                genArgumentos(e.args, m.parametros, false)
-                emitirLlamada("$claseNombre.${m.nombre}", e.args.size, m.tipo, e.pos)
-            } else {
-                // obj.metodo(...): este es el primer parametro (sec. 4.5.3)
-                // y el metodo se nombra Clase.metodo.
-                val tObj = genExpr(callee.obj)
-                emit(Operacion.PARAM, tObj, null, null, callee.obj.pos)
-                genArgumentos(e.args, m.parametros, false)
-                emitirLlamada("${nombreClaseDe(callee.obj)}.${m.nombre}", e.args.size + 1, m.tipo, e.pos)
+        return when (val callee = e.callee) {
+            is Nombre -> {
+                val f = sem.simbolos[callee.id] as? SimboloFuncion ?: return null
+                genArgumentos(e.args, f.parametros, f.esBuiltin)
+                emitirLlamada(f.nombre, e.args.size, f.tipo, e.pos)
             }
+            is AccesoMiembro -> {
+                val m = sem.simbolos[callee.id]
+                if (m !is SimboloFuncion) {
+                    null
+                } else if (m.esEstatico) {
+                    // Util.doble(21): sin este; la clase sale del ligado del Nombre.
+                    val objNombre = callee.obj as? Nombre
+                    val claseNombre = (objNombre?.let { sem.simbolos[it.id] } as? SimboloClase)?.nombre
+                        ?: nombreClaseDe(callee.obj)
+                    genArgumentos(e.args, m.parametros, false)
+                    emitirLlamada("$claseNombre.${m.nombre}", e.args.size, m.tipo, e.pos)
+                } else {
+                    // obj.metodo(...): este es el primer parametro (sec. 4.5.3)
+                    // y el metodo se nombra Clase.metodo.
+                    val tObj = genExpr(callee.obj)
+                    emit(Operacion.PARAM, tObj, null, null, callee.obj.pos)
+                    genArgumentos(e.args, m.parametros, false)
+                    emitirLlamada("${nombreClaseDe(callee.obj)}.${m.nombre}", e.args.size + 1, m.tipo, e.pos)
+                }
+            }
+            else -> null
         }
-        else -> null
     }
 
     private fun nombreClaseDe(obj: Expr): String =
@@ -860,12 +872,15 @@ class GeneradorTac private constructor(private val sem: ResultadoSemantico) {
     // El valor de la expresion es el OBJETO (t1), no el retorno del ctor.
     private fun genNuevoObjeto(e: NuevoObjeto): Operando {
         val clase = sem.simbolos[e.id] as? SimboloClase
+        // El nombre resuelto (cualificado si la clase vive en un paquete,
+        // Moka 2 P1), no el texto que escribio el programador.
+        val nombreClase = clase?.nombre ?: e.clase
         val t = nuevoTemporal()
-        emit(Operacion.NUEVO_OBJETO, Operando.Nombre(e.clase), null, t, e.pos)
+        emit(Operacion.NUEVO_OBJETO, Operando.Nombre(nombreClase), null, t, e.pos)
         emit(Operacion.PARAM, t, null, null, e.pos)
         val parametros = clase?.constructor?.parametros ?: emptyList()
         genArgumentos(e.args, parametros, false)
-        emit(Operacion.LLAMAR, Operando.Nombre("${e.clase}.constructor"), constante(e.args.size + 1), null, e.pos)
+        emit(Operacion.LLAMAR, Operando.Nombre("$nombreClase.constructor"), constante(e.args.size + 1), null, e.pos)
         return t
     }
 

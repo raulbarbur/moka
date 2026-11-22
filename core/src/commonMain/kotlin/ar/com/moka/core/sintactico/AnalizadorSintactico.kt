@@ -37,7 +37,7 @@ import org.antlr.v4.kotlinruntime.tree.TerminalNode
 
 class AnalizadorSintactico {
 
-    fun analizar(fuente: String): ResultadoSintactico {
+    fun analizar(fuente: String, primerId: Int = 1): ResultadoSintactico {
         val lexer = MokaLexer(CharStreams.fromString(fuente))
         lexer.removeErrorListeners() // los errores lexicos llegan como tokens (sec. 3.2)
         val parser = MokaParser(CommonTokenStream(lexer))
@@ -51,7 +51,7 @@ class AnalizadorSintactico {
         val arbol = copiarRaiz(arbolAntlr, parser, lexer)
         val diagnosticos = escuchador.diagnosticos
         // Sec. 4.7: ast = null si hubo errores.
-        val ast = if (diagnosticos.isEmpty()) ConstructorAst.construir(arbolAntlr) else null
+        val ast = if (diagnosticos.isEmpty()) ConstructorAst.construir(arbolAntlr, primerId) else null
         return ResultadoSintactico(arbol, ast, diagnosticos)
     }
 

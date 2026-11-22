@@ -20,6 +20,8 @@ import ar.com.moka.core.ejecucion.EventoEjecucion
 import ar.com.moka.core.pipeline.EventoPipeline
 import ar.com.moka.core.pipeline.Modo
 import ar.com.moka.core.pipeline.Moka
+import ar.com.moka.core.pipeline.Configuracion
+import ar.com.moka.core.paquetes.ProveedorPaquetes
 import ar.com.moka.core.semantico.Diagnostico
 import ar.com.moka.core.semantico.Severidad
 import java.io.File
@@ -55,9 +57,19 @@ fun main(args: Array<String>) {
     }
     val fuente = archivo.readText()
 
+    // Moka 2 (P1): un `usar util;` busca util.moka al lado del archivo
+    // principal; un paquete con puntos (util.texto) es una carpeta:
+    // util/texto.moka.
+    val carpeta = archivo.absoluteFile.parentFile
+    val proveedor = ProveedorPaquetes { paquete ->
+        val relativo = paquete.replace('.', '/') + ".moka"
+        val candidato = File(carpeta, relativo)
+        if (candidato.isFile) candidato.readText() else null
+    }
+
     val exito = runBlocking {
         var ok = true
-        Moka().procesar(fuente, ConsolaCli(), modo).collect { evento ->
+        Moka(Configuracion(proveedorPaquetes = proveedor)).procesar(fuente, ConsolaCli(), modo).collect { evento ->
             when (evento) {
                 is EventoPipeline.FaseCompletada ->
                     evento.diagnosticos.forEach { System.err.println(formatear(it)) }

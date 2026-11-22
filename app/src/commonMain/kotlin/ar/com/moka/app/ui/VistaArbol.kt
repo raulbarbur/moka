@@ -41,7 +41,17 @@ private fun lista(etiqueta: String, hijos: List<ElementoVista>, pos: Posicion?):
     ElementoVista(etiqueta, pos, hijos)
 
 fun vistaDeAst(nodo: Nodo): ElementoVista = when (nodo) {
-    is ProgramaAst -> lista("Programa", nodo.declaraciones.map(::vistaDeAst), nodo.pos)
+    is ProgramaAst -> {
+        // Moka 2 (P1): el encabezado `paquete` y los `usar` no son
+        // declaraciones; se muestran primero para que el arbol sea fiel.
+        val encabezados = buildList {
+            if (nodo.paquete != null) add(ElementoVista("Paquete(${nodo.paquete})", nodo.pos))
+            addAll(nodo.usos.map(::vistaDeAst))
+        }
+        lista("Programa", encabezados + nodo.declaraciones.map(::vistaDeAst), nodo.pos)
+    }
+
+    is UsoAst -> ElementoVista("Usar(${nodo.nombre})", nodo.pos)
 
     is TipoAst -> vistaDe(nodo)
 

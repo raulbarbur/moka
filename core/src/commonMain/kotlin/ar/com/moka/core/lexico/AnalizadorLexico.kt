@@ -83,6 +83,7 @@ class AnalizadorLexico {
             "SI", "SINO", "MIENTRAS", "HACER", "PARA", "PARA_CADA", "SEGUN",
             "CASO", "DEFECTO", "ROMPER", "CONTINUAR", "RETORNAR", "FUNCION",
             "CLASE", "CONSTRUCTOR", "NUEVO", "ESTE", "ESTATICO", "CONSTANTE",
+            "PAQUETE", "USAR",
             "Y", "O", "NO",
             "T_ENTERO", "T_FLOTANTE", "T_BOOLEANO", "T_CARACTER", "T_CADENA", "T_VACIO",
             "VERDADERO", "FALSO", "NULO"

@@ -69,7 +69,19 @@ sealed interface Nodo {
 class ProgramaAst(
     override val id: Int,
     override val pos: Posicion,
-    val declaraciones: List<Nodo>
+    val declaraciones: List<Nodo>,
+    // Moka 2 (P1): `paquete util.texto;` al inicio (null si el archivo no
+    // declara paquete) y la lista de `usar ...;` en orden de aparicion.
+    // Los nombres ya vienen unidos con puntos ("util.texto").
+    val paquete: String? = null,
+    val usos: List<UsoAst> = emptyList()
+) : Nodo
+
+// UsoAst: una declaracion `usar paquete;` del encabezado del programa.
+class UsoAst(
+    override val id: Int,
+    override val pos: Posicion,
+    val nombre: String
 ) : Nodo
 
 

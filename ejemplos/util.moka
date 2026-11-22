@@ -1,0 +1,13 @@
+// util.moka — paquete de ejemplo (Moka 2, P1)
+// La primera linea declara el paquete: otro archivo lo pide con `usar util;`
+// y llama sus funciones cualificadas: util.doble(21).
+paquete util;
+
+funcion entero doble(entero x) {
+    retornar x * 2;
+}
+
+funcion entero cuadruple(entero x) {
+    // Dentro del paquete, las funciones se llaman sin cualificar.
+    retornar doble(doble(x));
+}

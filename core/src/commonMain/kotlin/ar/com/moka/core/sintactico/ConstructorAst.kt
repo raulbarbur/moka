@@ -42,12 +42,14 @@ import org.antlr.v4.kotlinruntime.Token
 import org.antlr.v4.kotlinruntime.tree.ParseTree
 import org.antlr.v4.kotlinruntime.tree.TerminalNode
 
-class ConstructorAst : MokaBaseVisitor<Nodo?>() {
+class ConstructorAst private constructor(private val primerId: Int) : MokaBaseVisitor<Nodo?>() {
 
     // Contador de ids: cada nodo creado se lleva el siguiente. Los hijos se
     // construyen antes que los padres, asi que los ids crecen de las hojas
     // hacia la raiz; lo unico que importa es que no se repitan.
-    private var proximoId: Int = 1
+    // Los ids arrancan en 1; al unir paquetes (Moka 2) cada archivo pide
+    // una base distinta para que ningun id se repita entre fuentes.
+    private var proximoId: Int = primerId
     private fun nuevoId(): Int = proximoId++
 
     // El visitor base exige un resultado por defecto (lo usa para terminales
@@ -58,8 +60,8 @@ class ConstructorAst : MokaBaseVisitor<Nodo?>() {
     companion object {
         // Punto de entrada comodo: ids frescos en cada llamada.
         // Uso:  ConstructorAst.construir(parser.programa())
-        fun construir(programa: MokaParser.ProgramaContext): ProgramaAst =
-            ConstructorAst().visitPrograma(programa)
+        fun construir(programa: MokaParser.ProgramaContext, primerId: Int = 1): ProgramaAst =
+            ConstructorAst(primerId).visitPrograma(programa)
     }
 
     // ------------------------- utilidades internas -------------------------
@@ -135,18 +137,32 @@ class ConstructorAst : MokaBaseVisitor<Nodo?>() {
     // ------------------------- programa y declaraciones ---------------------
 
     override fun visitPrograma(ctx: MokaParser.ProgramaContext): ProgramaAst {
-        // programa: (declaracionClase | declaracionFuncion | sentencia)* EOF
-        // Recorremos los hijos en orden: visit() despacha solo al metodo de
-        // cada alternativa. El ultimo hijo es el EOF (un TerminalNode): al
-        // visitarlo cae en visitTerminal, que da defaultResult() = null.
+        // programa: encabezadoPaquete? declaracionUso* (clase|funcion|sentencia)* EOF
+        // El encabezado y los usos NO son declaraciones: se guardan aparte.
+        // El ultimo hijo es el EOF (un TerminalNode): al visitarlo cae en
+        // visitTerminal, que da defaultResult() = null.
         val declaraciones = mutableListOf<Nodo>()
+        var paquete: String? = null
+        val usos = mutableListOf<UsoAst>()
         for (hijo in ctx.children.orEmpty()) {
-            if (hijo is TerminalNode) continue
-            val nodo = visit(hijo)
-            if (nodo != null) declaraciones.add(nodo)
+            when (hijo) {
+                is TerminalNode -> continue
+                is MokaParser.EncabezadoPaqueteContext ->
+                    paquete = nombreDePaquete(hijo.nombrePaquete())
+                is MokaParser.DeclaracionUsoContext ->
+                    usos.add(UsoAst(nuevoId(), pos(hijo), nombreDePaquete(hijo.nombrePaquete())))
+                else -> {
+                    val nodo = visit(hijo)
+                    if (nodo != null) declaraciones.add(nodo)
+                }
+            }
         }
-        return ProgramaAst(nuevoId(), pos(ctx), declaraciones)
+        return ProgramaAst(nuevoId(), pos(ctx), declaraciones, paquete, usos)
     }
+
+    // nombrePaquete: ID (PUNTO ID)* -> "util.texto"
+    private fun nombreDePaquete(ctx: MokaParser.NombrePaqueteContext): String =
+        ctx.ID().joinToString(".") { it.text }
 
     override fun visitDeclaracionFuncion(ctx: MokaParser.DeclaracionFuncionContext): DeclFuncion =
         DeclFuncion(

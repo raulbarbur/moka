@@ -18,6 +18,8 @@ val REGLAS_TOKEN: Map<String, String> = mapOf(
     "HACER" to "'hacer'",
     "PARA" to "'para'",
     "PARA_CADA" to "'para_cada'",
+    "PAQUETE" to "'paquete'",
+    "USAR" to "'usar'",
     "SEGUN" to "'segun'",
     "CASO" to "'caso'",
     "DEFECTO" to "'defecto'",

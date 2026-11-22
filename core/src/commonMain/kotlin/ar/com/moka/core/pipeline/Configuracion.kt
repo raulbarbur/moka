@@ -7,9 +7,14 @@
 // =======================================================================
 package ar.com.moka.core.pipeline
 
+import ar.com.moka.core.paquetes.ProveedorPaquetes
+
 data class Configuracion(
     // Limite de cuadruplas ejecutadas; null = sin limite (sec. 4.6).
     val limiteCuadruplas: Long? = null,
     // Profundidad maxima de la pila de llamadas (sec. 4.6).
-    val profundidadMaxima: Int = 1000
+    val profundidadMaxima: Int = 1000,
+    // Moka 2 (P1): quien busca la fuente de un `usar paquete;`. Null
+    // significa "no hay carga de paquetes" y todo usar da SEM-062.
+    val proveedorPaquetes: ProveedorPaquetes? = null
 )

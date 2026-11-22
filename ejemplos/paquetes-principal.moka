@@ -1,0 +1,7 @@
+// paquetes-principal.moka — usar un paquete (Moka 2, P1)
+// Corre desde la terminal: gradlew :cli:run --args="ejemplos/paquetes-principal.moka"
+// El `usar util;` carga ejemplos/util.moka (mismo directorio).
+usar util;
+
+imprimir("El doble de 21 es " + a_cadena(util.doble(21)));
+imprimir("El cuadruple de 3 es " + a_cadena(util.cuadruple(3)));

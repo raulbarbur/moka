@@ -45,7 +45,21 @@ data class ResultadoSemantico(
     val tipos: Map<Int, Tipo>,
     val simbolos: Map<Int, Simbolo>,
     val chequeos: List<Chequeo>,
-    val diagnosticos: List<Diagnostico>
+    val diagnosticos: List<Diagnostico>,
+    // Moka 2 (P1): de que paquete vino cada declaracion toplevel (las del
+    // archivo principal no figuran) y las llamadas a funcion de paquete
+    // ya ligadas a su nombre cualificado ("util.sumar"), por id de nodo.
+    val paqueteDe: Map<Int, String> = emptyMap(),
+    val llamadasPaquete: Map<Int, SimboloFuncion> = emptyMap()
+)
+
+// Moka 2 (P1): lo que el resolvedor de paquetes le pasa al semantico.
+//  - paqueteDe: declaracion toplevel -> paquete del que vino.
+//  - usosDe: paquete -> sus `usar` ("" es el archivo principal). Sus
+//    claves (menos "") son los paquetes cargados.
+data class ContextoPaquetes(
+    val paqueteDe: Map<Int, String> = emptyMap(),
+    val usosDe: Map<String, List<String>> = emptyMap()
 )
 
 class AnalizadorSemantico {
@@ -66,6 +80,12 @@ class AnalizadorSemantico {
     internal var dentroCiclo: Int = 0
     internal var dentroSegun: Int = 0
 
+    // Moka 2 (P1): el paquete de la declaracion que se esta chequeando
+    // (null en el archivo principal) y las llamadas a paquetes ya ligadas.
+    internal var paqueteActual: String? = null
+    internal var contextoPaquetes: ContextoPaquetes = ContextoPaquetes()
+    internal val llamadasPaquete = mutableMapOf<Int, SimboloFuncion>()
+
     // Variables de para_cada: de solo lectura en el cuerpo (seccion 2.7).
     // Se identifican por idUnico, no por nombre: un sombreado interno es
     // otra variable y SI se puede modificar.
@@ -78,21 +98,26 @@ class AnalizadorSemantico {
 
     companion object {
         // Punto de entrada comodo: AnalizadorSemantico.analizar(ast)
-        fun analizar(programa: ProgramaAst): ResultadoSemantico =
-            AnalizadorSemantico().ejecutar(programa)
+        fun analizar(programa: ProgramaAst, paquetes: ContextoPaquetes = ContextoPaquetes()): ResultadoSemantico =
+            AnalizadorSemantico().ejecutar(programa, paquetes)
     }
 
     // ------------------------------ orquestacion --------------------------
 
-    private fun ejecutar(programa: ProgramaAst): ResultadoSemantico {
+    private fun ejecutar(programa: ProgramaAst, paquetes: ContextoPaquetes): ResultadoSemantico {
         val raiz = Ambito(TipoAmbito.GLOBAL, "global", padre = null, pos = null)
+        contextoPaquetes = paquetes
 
         // ---- Pasada A ----
         registrarBuiltins(raiz)
         for (d in programa.declaraciones) {
-            if (d is DeclClase) registrarCascaronClase(d, raiz)
+            if (d is DeclClase) {
+                paqueteActual = paquetes.paqueteDe[d.id]
+                registrarCascaronClase(d, raiz)
+            }
         }
         for (d in programa.declaraciones) {
+            paqueteActual = paquetes.paqueteDe[d.id]
             when (d) {
                 is DeclClase -> completarMiembrosClase(d, raiz)
                 is DeclFuncion -> registrarFirmaFuncion(d, raiz)
@@ -103,6 +128,7 @@ class AnalizadorSemantico {
         // ---- Pasada B ----
         for (d in programa.declaraciones) {
             if (diag.completo) break
+            paqueteActual = paquetes.paqueteDe[d.id]
             when (d) {
                 is DeclClase -> chequearCuerposClase(d, raiz)
                 is DeclFuncion -> chequearCuerpoFuncion(d, raiz)
@@ -117,6 +143,8 @@ class AnalizadorSemantico {
             raiz = raiz,
             tipos = tipos,
             simbolos = simbolos,
+            paqueteDe = paquetes.paqueteDe,
+            llamadasPaquete = llamadasPaquete,
             chequeos = chequeos,
             diagnosticos = diag.diagnosticos
         )
@@ -156,7 +184,7 @@ class AnalizadorSemantico {
     // referenciar a otra declarada despues (`clase A { B b; }`), asi que
     // todos los nombres tienen que existir antes de resolver UN solo tipo.
     private fun registrarCascaronClase(decl: DeclClase, raiz: Ambito) {
-        val clase = SimboloClase(decl.nombre, decl.pos, mutableMapOf(), mutableMapOf(), null)
+        val clase = SimboloClase(cualificar(decl.nombre), decl.pos, mutableMapOf(), mutableMapOf(), null)
         if (!raiz.declarar(clase)) {
             val previa = raiz.clases.getValue(decl.nombre)
             diag.error(
@@ -172,7 +200,7 @@ class AnalizadorSemantico {
     // Segundo tiempo: campos, metodos y constructor. Ya estan TODOS los
     // cascarones, asi que cualquier tipo de clase se resuelve aca.
     private fun completarMiembrosClase(decl: DeclClase, raiz: Ambito) {
-        val clase = raiz.clases[decl.nombre] ?: return   // hubo duplicado: ya se reporto
+        val clase = raiz.clases[cualificar(decl.nombre)] ?: return   // hubo duplicado: ya se reporto
 
         for (campo in decl.campos) {
             val tipo = resolverTipo(campo.tipo, raiz, permitirVacio = false)
@@ -227,10 +255,36 @@ class AnalizadorSemantico {
         return SimboloFuncion(metodo.nombre, retorno, metodo.pos, params, esBuiltin = false, esEstatico = metodo.esEstatico)
     }
 
+    // --------------------- paquetes (Moka 2, P1) ---------------------
+
+    // Nombre cualificado de una declaracion toplevel: dentro de un
+    // paquete, "sumar" se registra como "util.sumar".
+    internal fun cualificar(nombre: String): String =
+        paqueteActual?.let { "$it.$nombre" } ?: nombre
+
+    // Resolucion con paquete: primero en el paquete actual (lo propio
+    // gana, como en Java) y despues en el global (principal y builtins).
+    internal fun resolverFuncionVisible(amb: Ambito, nombre: String): SimboloFuncion? =
+        paqueteActual?.let { amb.resolverFuncion("$it.$nombre") } ?: amb.resolverFuncion(nombre)
+
+    internal fun resolverClaseVisible(amb: Ambito, nombre: String): SimboloClase? =
+        paqueteActual?.let { amb.resolverClase("$it.$nombre") } ?: amb.resolverClase(nombre)
+
+    // ¿El archivo actual pidio este paquete con `usar`?
+    internal fun paqueteUsable(nombre: String): Boolean =
+        nombre in (contextoPaquetes.usosDe[paqueteActual ?: ""] ?: emptyList())
+
+    // Paquetes cargados pero NO pedidos por el archivo actual (para el
+    // error didactico "te falta usar X;").
+    internal fun paqueteCargadoNoUsado(nombre: String): Boolean =
+        nombre in contextoPaquetes.usosDe.keys - "" && !paqueteUsable(nombre)
+
     private fun registrarFirmaFuncion(decl: DeclFuncion, raiz: Ambito) {
         val retorno = resolverTipo(decl.retorno, raiz, permitirVacio = true)
         val params = decl.params.map { resolverTipo(it.tipo, raiz, permitirVacio = false) }
-        val sim = SimboloFuncion(decl.nombre, retorno, decl.pos, params, esBuiltin = false)
+        // Las funciones de un paquete se registran cualificadas
+        // ("util.sumar"): dos paquetes pueden tener la misma funcion.
+        val sim = SimboloFuncion(cualificar(decl.nombre), retorno, decl.pos, params, esBuiltin = false)
         if (!raiz.declarar(sim)) {
             diag.error(
                 "SEM-023",
@@ -245,7 +299,7 @@ class AnalizadorSemantico {
     // --------------------- pasada B: clases y funciones ---------------------
 
     private fun chequearCuerposClase(decl: DeclClase, raiz: Ambito) {
-        val clase = raiz.clases[decl.nombre] ?: return
+        val clase = raiz.clases[cualificar(decl.nombre)] ?: return
         val ambitoClase = raiz.abrir(TipoAmbito.CLASE, "clase ${decl.nombre}", decl.pos)
 
         // Los campos viven en el ambito de la clase: un metodo los nombra
@@ -301,7 +355,7 @@ class AnalizadorSemantico {
     }
 
     private fun chequearCuerpoFuncion(decl: DeclFuncion, raiz: Ambito) {
-        val sim = raiz.funciones[decl.nombre] ?: return
+        val sim = raiz.funciones[cualificar(decl.nombre)] ?: return
         estaticoActual = false
         chequearCuerpoInvocable(
             params = decl.params,
@@ -653,7 +707,7 @@ class AnalizadorSemantico {
                 TError
             }
             else -> {
-                val clase = amb.resolverClase(t.nombre)
+                val clase = resolverClaseVisible(amb, t.nombre)
                 if (clase != null) {
                     TClase(clase.nombre)
                 } else {

@@ -212,11 +212,11 @@ internal class Tipificador(private val a: AnalizadorSemantico) {
             a.simbolos[e.id] = sim
             return sim.tipo
         }
-        if (amb.resolverFuncion(e.ident) != null) {
+        if (a.resolverFuncionVisible(amb, e.ident) != null) {
             a.diag.error("SEM-042", "'${e.ident}' es una funcion: para usarla hay que llamarla, por ejemplo ${e.ident}(...).", e.pos)
             return TError
         }
-        if (amb.resolverClase(e.ident) != null) {
+        if (a.resolverClaseVisible(amb, e.ident) != null) {
             a.diag.error("SEM-043", "'${e.ident}' es una clase, no un valor. Se usa con 'nuevo ${e.ident}(...)'.", e.pos)
             return TError
         }
@@ -451,7 +451,7 @@ internal class Tipificador(private val a: AnalizadorSemantico) {
 
     private fun tiparLlamada(e: Llamada, amb: Ambito): Tipo = when (val callee = e.callee) {
         is Nombre -> {
-            val f = amb.resolverFuncion(callee.ident)
+            val f = a.resolverFuncionVisible(amb, callee.ident)
             when {
                 f != null -> {
                     a.simbolos[callee.id] = f
@@ -479,13 +479,20 @@ internal class Tipificador(private val a: AnalizadorSemantico) {
             }
         }
         is AccesoMiembro -> {
-            val (tipo, simbolo) = resolverAcceso(callee, amb, paraLlamada = true)
-            if (simbolo is SimboloFuncion) {
-                chequearArgumentos(e, "${textoDe(callee.obj)}.${callee.miembro}", simbolo, amb)
+            // ¿Es una llamada a funcion de paquete? (Moka 2, P1):
+            // util.sumar(...). Una variable con ese nombre siempre gana.
+            val dePaquete = resolverLlamadaDePaquete(e, callee, amb)
+            if (dePaquete != null) {
+                dePaquete
             } else {
-                tiparTodo(e.args, amb)
+                val (tipo, simbolo) = resolverAcceso(callee, amb, paraLlamada = true)
+                if (simbolo is SimboloFuncion) {
+                    chequearArgumentos(e, "${textoDe(callee.obj)}.${callee.miembro}", simbolo, amb)
+                } else {
+                    tiparTodo(e.args, amb)
+                }
+                tipo
             }
-            tipo
         }
         else -> {
             a.diag.error("SEM-052", "Solo se pueden llamar funciones y metodos.", callee.pos)
@@ -493,6 +500,44 @@ internal class Tipificador(private val a: AnalizadorSemantico) {
             tiparTodo(e.args, amb)
             TError
         }
+    }
+
+    // `util.texto.sumar` llega anidado: AccesoMiembro(AccesoMiembro(Nombre,
+    // texto), sumar). Se aplana a ["util", "texto", "sumar"]; null si la
+    // base no es un nombre (ahi no puede ser paquete).
+    private fun aplanarAcceso(e: Expr): List<String>? = when (e) {
+        is Nombre -> listOf(e.ident)
+        is AccesoMiembro -> aplanarAcceso(e.obj)?.plus(e.miembro)
+        else -> null
+    }
+
+    // Llamada cualificada a funcion de paquete (Moka 2, P1). Devuelve el
+    // tipo de retorno, TError si el paquete/la funcion fallan, y null si
+    // esto no es una llamada a paquete (sigue el camino de metodo).
+    private fun resolverLlamadaDePaquete(e: Llamada, callee: AccesoMiembro, amb: Ambito): Tipo? {
+        val partes = aplanarAcceso(callee) ?: return null
+        if (partes.size < 2) return null
+        // Una variable con ese nombre gana: obj.metodo(...) normal.
+        val base = callee.obj
+        if (base is Nombre && amb.resolver(base.ident) != null) return null
+        val paquete = partes.dropLast(1).joinToString(".")
+        if (!a.paqueteUsable(paquete)) {
+            if (a.paqueteCargadoNoUsado(paquete)) {
+                a.diag.error("SEM-068", "Para llamar a '$paquete.${partes.last()}' falta pedir el paquete: escribi 'usar $paquete;' al principio del archivo.", callee.pos)
+                tiparTodo(e.args, amb)
+                return TError
+            }
+            return null
+        }
+        val f = amb.resolverFuncion("$paquete.${partes.last()}")
+        if (f == null) {
+            a.diag.error("SEM-067", "El paquete '$paquete' no tiene la funcion '${partes.last()}'.", callee.pos)
+            tiparTodo(e.args, amb)
+            return TError
+        }
+        a.llamadasPaquete[e.id] = f
+        chequearArgumentos(e, "$paquete.${partes.last()}", f, amb)
+        return f.tipo
     }
 
     private fun tiparTodo(args: List<Expr>, amb: Ambito) {
@@ -634,7 +679,7 @@ internal class Tipificador(private val a: AnalizadorSemantico) {
         // ¿El "objeto" es en realidad el nombre de una clase?
         val objNombre = e.obj as? Nombre
         if (objNombre != null && amb.resolver(objNombre.ident) == null) {
-            val claseEstatica = amb.resolverClase(objNombre.ident)
+            val claseEstatica = a.resolverClaseVisible(amb, objNombre.ident)
             if (claseEstatica != null) {
                 a.simbolos[objNombre.id] = claseEstatica
                 a.tipos[objNombre.id] = TClase(claseEstatica.nombre)
@@ -701,7 +746,7 @@ internal class Tipificador(private val a: AnalizadorSemantico) {
     }
 
     private fun tiparNuevoObjeto(e: NuevoObjeto, amb: Ambito): Tipo {
-        val clase = amb.resolverClase(e.clase)
+        val clase = a.resolverClaseVisible(amb, e.clase)
         if (clase == null) {
             a.diag.error("SEM-035", "No existe la clase '${e.clase}'.", e.pos)
             tiparTodo(e.args, amb)

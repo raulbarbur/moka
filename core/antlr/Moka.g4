@@ -15,8 +15,16 @@ grammar Moka;
 // Lo suelto actua como el "main" implicito (seccion 2.2).
 
 programa
-    : (declaracionClase | declaracionFuncion | sentencia)* EOF
+    : encabezadoPaquete? declaracionUso* (declaracionClase | declaracionFuncion | sentencia)* EOF
     ;
+
+// --- Paquetes (Moka 2, P1) ---
+// `paquete util;` al inicio declara a que paquete pertenece el archivo y
+// `usar util;` pide otro paquete para llamar sus funciones como
+// util.sumar(...). Un nombre de paquete puede tener puntos: util.texto.
+encabezadoPaquete : PAQUETE nombrePaquete PUNTO_COMA ;
+declaracionUso    : USAR nombrePaquete PUNTO_COMA ;
+nombrePaquete     : ID (PUNTO ID)* ;
 
 // --- Declaraciones ---
 
@@ -191,6 +199,8 @@ NUEVO       : 'nuevo' ;
 ESTE        : 'este' ;
 ESTATICO    : 'estatico' ;
 CONSTANTE   : 'constante' ;
+PAQUETE     : 'paquete' ;
+USAR        : 'usar' ;
 
 // --- Operadores con nombre ---
 // Decision del lenguaje: los operadores logicos son palabras, no simbolos.
