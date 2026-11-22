@@ -130,7 +130,11 @@ class EstadoWorkbenchTest {
             .reducir(EventoPipeline.DeEjecucion(EventoEjecucion.ErrorEjecucion(diag)))
         assertEquals(EstadoFase.CON_ERRORES, estado.fases.getValue(Fase.EJECUCION).estado)
         assertEquals(listOf(diag), estado.fases.getValue(Fase.EJECUCION).diagnosticos)
-        assertEquals(LineaConsola("Error de ejecucion: division por cero.", esError = true), estado.salida.last())
+        // La linea roja lleva el mensaje y, si el codigo tiene, la pista
+        // didactica en un renglon indentado (EJE-001 la tiene).
+        val textoEsperado = diag.mensaje + (diag.pista?.let { "\n   Pista: $it" } ?: "")
+        assertEquals(LineaConsola(textoEsperado, esError = true), estado.salida.last())
+        assertTrue(estado.salida.last().texto.contains("Pista:"))
     }
 
     @Test

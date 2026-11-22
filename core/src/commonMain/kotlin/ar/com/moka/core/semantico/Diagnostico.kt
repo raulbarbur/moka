@@ -24,6 +24,7 @@
 package ar.com.moka.core.semantico
 
 import ar.com.moka.core.ast.Posicion
+import ar.com.moka.core.errores.Pistas
 
 const val TOPE_DIAGNOSTICOS: Int = 50
 
@@ -34,7 +35,13 @@ data class Diagnostico(
     val codigo: String,      // "SEM-001" ... (lexicos LEX-, sintacticos SIN-, ejecucion EJE-)
     val mensaje: String,
     val pos: Posicion
-)
+) {
+    // Sugerencia didactica opcional (errores/Pistas.kt): calculada del
+    // codigo y el mensaje, no guardada, asi todos los reportes la ganan
+    // sin cambiar y ningun constructor se rompe. Null si no hay pista.
+    val pista: String?
+        get() = Pistas.para(codigo, mensaje)
+}
 
 // Acumulador con tope: compartido por todos los puntos del analizador que
 // reportan. error() y advertencia() devuelven false cuando ya no entran

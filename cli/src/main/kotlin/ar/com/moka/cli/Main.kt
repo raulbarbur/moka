@@ -86,10 +86,12 @@ fun main(args: Array<String>) {
     exitProcess(if (exito) 0 else 1)
 }
 
-// Un diagnostico por linea: fase y posicion primero (sec. 4.8).
+// Un diagnostico por linea: fase y posicion primero (sec. 4.8). Si hay
+// pista didactica (errores/Pistas.kt) va en un segundo renglon.
 private fun formatear(d: Diagnostico): String {
     val nivel = if (d.severidad == Severidad.ERROR) "Error" else "Advertencia"
-    return "$nivel [${d.codigo}] en linea ${d.pos.linea}, columna ${d.pos.columna}: ${d.mensaje}"
+    val base = "$nivel [${d.codigo}] en linea ${d.pos.linea}, columna ${d.pos.columna}: ${d.mensaje}"
+    return d.pista?.let { "$base\n  Pista: $it" } ?: base
 }
 
 // Los nombres de ColoresConsola (core) a codigos ANSI de primer plano.

@@ -143,19 +143,32 @@ fun FilaDiagnostico(diagnostico: Diagnostico, onSeleccionar: (Posicion) -> Unit,
     } else {
         MaterialTheme.colorScheme.tertiary
     }
-    Row(
-        Modifier.fillMaxWidth().clickable { onSeleccionar(diagnostico.pos) }.padding(vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        Modifier.fillMaxWidth().clickable { onSeleccionar(diagnostico.pos) }.padding(vertical = 3.dp)
     ) {
-        Text(diagnostico.codigo, style = MaterialTheme.typography.labelMedium, fontSize = tamanio.sp, color = color)
-        Spacer(Modifier.width(8.dp))
-        Text(
-            "(${diagnostico.pos.linea}:${diagnostico.pos.columna})",
-            style = MaterialTheme.typography.labelMedium,
-            fontSize = tamanio.sp,
-            color = MaterialTheme.colorScheme.outline
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(diagnostico.mensaje, style = MaterialTheme.typography.bodySmall, fontSize = tamanio.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(diagnostico.codigo, style = MaterialTheme.typography.labelMedium, fontSize = tamanio.sp, color = color)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "(${diagnostico.pos.linea}:${diagnostico.pos.columna})",
+                style = MaterialTheme.typography.labelMedium,
+                fontSize = tamanio.sp,
+                color = MaterialTheme.colorScheme.outline
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(diagnostico.mensaje, style = MaterialTheme.typography.bodySmall, fontSize = tamanio.sp)
+        }
+        // Pista didactica (errores/Pistas.kt): una sugerencia corta
+        // debajo del mensaje, en el color secundario para no competir
+        // con el error.
+        diagnostico.pista?.let {
+            Text(
+                "Pista: $it",
+                style = MaterialTheme.typography.bodySmall,
+                fontSize = tamanio.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp)
+            )
+        }
     }
 }

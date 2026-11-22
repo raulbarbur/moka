@@ -140,7 +140,13 @@ data class EstadoWorkbench(
         is EventoEjecucion.Paso -> copy(pasoActual = evento, pidiendoEntrada = false)
         is EventoEjecucion.ErrorEjecucion ->
             copy(
-                salida = salida + LineaConsola(evento.diagnostico.mensaje, esError = true),
+                // La pista didactica viaja en la misma linea de error,
+                // en un renglon aparte e indentada (ConsolaTaller junta
+                // los trozos, asi que el \n interno se respeta).
+                salida = salida + LineaConsola(
+                    evento.diagnostico.mensaje + (evento.diagnostico.pista?.let { "\n   Pista: $it" } ?: ""),
+                    esError = true
+                ),
                 pidiendoEntrada = false
             ).actualizarFase(Fase.EJECUCION) {
                 it.copy(
