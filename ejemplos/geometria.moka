@@ -1,0 +1,22 @@
+// Paquete de ejemplo para Moka 2 (P2): una clase Punto reutilizable.
+// Se carga desde otro archivo con `usar geometria;` y sus tipos se
+// escriben cualificados: geometria.Punto.
+paquete geometria;
+
+clase Punto {
+    entero cx;
+    entero cy;
+
+    constructor(entero px, entero py) {
+        este.cx = px;
+        este.cy = py;
+    }
+
+    funcion entero suma() {
+        retornar este.cx + este.cy;
+    }
+
+    funcion cadena describir() {
+        retornar "(" + a_cadena(este.cx) + ", " + a_cadena(este.cy) + ")";
+    }
+}

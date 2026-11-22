@@ -193,7 +193,10 @@ class GeneradorTac private constructor(private val sem: ResultadoSemantico) {
     private fun genInicializadoresEstaticos(programa: ProgramaAst) {
         for (d in programa.declaraciones) {
             if (d !is DeclClase) continue
-            val clase = sem.raiz.clases[d.nombre] ?: continue
+            // Nombre cualificado si la clase vive en un paquete (P1/P2):
+            // asi se registran en sem.raiz.clases desde P1.
+            val nombreReal = sem.paqueteDe[d.id]?.let { "$it.${d.nombre}" } ?: d.nombre
+            val clase = sem.raiz.clases[nombreReal] ?: continue
             for (campo in d.campos) {
                 if (!campo.esEstatico) continue
                 val inicial = campo.inicial ?: continue

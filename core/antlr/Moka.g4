@@ -54,10 +54,12 @@ declaracionVariable
 
 // --- Tipos ---
 // tipoBase incluye ID: el nombre de una clase es un tipo (Alumno a = ...).
+// Desde Moka 2 P2 el ID puede venir cualificado con su paquete
+// (geometria.Punto p = ...), con la misma forma que nombrePaquete.
 
 tipoRetorno : T_VACIO | tipo ;
 tipo        : tipoBase (CORCHETE_IZQ CORCHETE_DER)? ;
-tipoBase    : T_ENTERO | T_FLOTANTE | T_BOOLEANO | T_CARACTER | T_CADENA | ID ;
+tipoBase    : T_ENTERO | T_FLOTANTE | T_BOOLEANO | T_CARACTER | T_CADENA | ID (PUNTO ID)* ;
 
 // --- Sentencias ---
 
@@ -163,7 +165,7 @@ primario
     | ESTE                                                           # refEste
     | ID                                                             # refNombre
     | PAREN_IZQ expresion PAREN_DER                                  # parentesis
-    | NUEVO ID PAREN_IZQ argumentos? PAREN_DER                       # nuevoObjeto
+    | NUEVO ID (PUNTO ID)* PAREN_IZQ argumentos? PAREN_DER           # nuevoObjeto
     | NUEVO tipoBase CORCHETE_IZQ expresion CORCHETE_DER             # nuevoArreglo
     | CORCHETE_IZQ expresion (COMA expresion)* CORCHETE_DER          # litArreglo
     ;

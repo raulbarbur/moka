@@ -270,6 +270,25 @@ class AnalizadorSemantico {
     internal fun resolverClaseVisible(amb: Ambito, nombre: String): SimboloClase? =
         paqueteActual?.let { amb.resolverClase("$it.$nombre") } ?: amb.resolverClase(nombre)
 
+    // Prefijo de paquete de un nombre cualificado ("geometria.Punto" ->
+    // "geometria"); null si el nombre es simple (Moka 2 P2).
+    internal fun paqueteDeNombreCualificado(nombre: String): String? =
+        if ('.' in nombre) nombre.substringBeforeLast('.') else null
+
+    // Regla P2 para tipos escritos con paquete: el prefijo tiene que ser
+    // el paquete actual o uno pedido con `usar`. Devuelve true cuando el
+    // nombre cualificado es utilizable; emite SEM-069 (el paquete esta
+    // cargado pero falta el `usar`) y devuelve false cuando no. Un nombre
+    // simple, o un paquete que ni siquiera se cargo, no se decide aca:
+    // lo resuelve el llamador con su error de siempre.
+    internal fun tipoCualificadoUsable(nombre: String, pos: Posicion, accion: String): Boolean {
+        val paquete = paqueteDeNombreCualificado(nombre) ?: return true
+        if (paquete == paqueteActual || paqueteUsable(paquete)) return true
+        if (!paqueteCargadoNoUsado(paquete)) return true   // no cargado: SEM-035 lo reporta el llamador
+        diag.error("SEM-069", "Para $accion '$nombre' falta pedir el paquete: escribi 'usar $paquete;' al principio del archivo.", pos)
+        return false
+    }
+
     // ¿El archivo actual pidio este paquete con `usar`?
     internal fun paqueteUsable(nombre: String): Boolean =
         nombre in (contextoPaquetes.usosDe[paqueteActual ?: ""] ?: emptyList())
@@ -707,6 +726,10 @@ class AnalizadorSemantico {
                 TError
             }
             else -> {
+                if (!tipoCualificadoUsable(t.nombre, t.pos, "usar el tipo")) {
+                    tipos[t.id] = TError
+                    return TError
+                }
                 val clase = resolverClaseVisible(amb, t.nombre)
                 if (clase != null) {
                     TClase(clase.nombre)

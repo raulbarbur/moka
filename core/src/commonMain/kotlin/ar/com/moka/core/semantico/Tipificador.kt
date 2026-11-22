@@ -746,6 +746,12 @@ internal class Tipificador(private val a: AnalizadorSemantico) {
     }
 
     private fun tiparNuevoObjeto(e: NuevoObjeto, amb: Ambito): Tipo {
+        // Moka 2 P2: la clase puede venir cualificada (nuevo geo.Punto(...));
+        // el paquete tiene que estar pedido con `usar` (SEM-069).
+        if (!a.tipoCualificadoUsable(e.clase, e.pos, "construir un")) {
+            tiparTodo(e.args, amb)
+            return TError
+        }
         val clase = a.resolverClaseVisible(amb, e.clase)
         if (clase == null) {
             a.diag.error("SEM-035", "No existe la clase '${e.clase}'.", e.pos)

@@ -88,7 +88,8 @@ class UsoAst(
 // ----------------------------------------------------------------------------
 // TipoAst: un tipo tal como se escribio en el codigo.
 // `nombre` es "entero", "flotante", "booleano", "caracter", "cadena",
-// "vacio" (solo como retorno) o el nombre de una clase ("Alumno").
+// "vacio" (solo como retorno) o el nombre de una clase ("Alumno"); desde
+// Moka 2 P2 puede venir cualificado con su paquete ("geometria.Punto").
 // `esArreglo` marca el sufijo [] (entero[], Alumno[]).
 //
 // Aca NO se distingue si el nombre es valido o si la clase existe: eso es
@@ -422,6 +423,8 @@ class AccesoIndice(
     val indice: Expr
 ) : Expr
 
+// `clase` es el nombre tal como se escribio: simple ("Punto") o
+// cualificado con su paquete ("geometria.Punto", Moka 2 P2).
 class NuevoObjeto(
     override val id: Int,
     override val pos: Posicion,

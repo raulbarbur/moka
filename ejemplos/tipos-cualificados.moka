@@ -1,0 +1,20 @@
+// Tipos cualificados (Moka 2, P2): usar clases de otro paquete.
+// El prefijo es el paquete pedido con `usar`; la clase se escribe
+// paquete.Clase en declaraciones, parametros, retornos y arreglos.
+usar geometria;
+
+funcion entero dobleSuma(geometria.Punto p) {
+    retornar p.suma() * 2;
+}
+
+geometria.Punto p = nuevo geometria.Punto(3, 4);
+imprimir("p = " + p.describir());
+imprimir("doble de la suma: " + a_cadena(dobleSuma(p)));
+
+geometria.Punto[] vertices = nuevo geometria.Punto[3];
+vertices[0] = p;
+vertices[1] = nuevo geometria.Punto(10, 20);
+vertices[2] = nuevo geometria.Punto(0 - 1, 1);
+para_cada (geometria.Punto v : vertices) {
+    imprimir("vertice " + v.describir());
+}

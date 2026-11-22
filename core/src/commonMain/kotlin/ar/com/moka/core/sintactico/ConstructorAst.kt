@@ -101,11 +101,19 @@ class ConstructorAst private constructor(private val primerId: Int) : MokaBaseVi
     private fun textoUnico(ctx: ParserRuleContext): String =
         (ctx.getChild(0) as TerminalNode).text
 
+    // Nombre de un tipoBase de clase: un ID simple ("Punto") o uno
+    // cualificado con su paquete ("geometria.Punto", Moka 2 P2). Los
+    // primitivos son un solo token y pasan por textoUnico.
+    private fun nombreTipoDe(base: MokaParser.TipoBaseContext): String {
+        val ids = base.ID()
+        return if (ids.isEmpty()) textoUnico(base) else ids.joinToString(".") { it.text }
+    }
+
     private fun tipoDe(ctx: MokaParser.TipoContext): TipoAst {
-        // tipoBase es un solo token: T_ENTERO ... T_CADENA o ID (una clase).
-        // El lexema ya es el nombre que queremos guardar.
+        // tipoBase es un solo token primitivo o un ID (cualificado o no):
+        // el nombre de una clase. El lexema ya es el nombre a guardar.
         val base = ctx.tipoBase()
-        val nombre = textoUnico(base)
+        val nombre = nombreTipoDe(base)
         return TipoAst(
             id = nuevoId(),
             pos = pos(ctx),
@@ -505,7 +513,7 @@ class ConstructorAst private constructor(private val primerId: Int) : MokaBaseVi
         NuevoObjeto(
             id = nuevoId(),
             pos = pos(ctx),
-            clase = ctx.ID().text,
+            clase = ctx.ID().joinToString(".") { it.text },   // simple o paquete.Clase (P2)
             args = argsDe(ctx.argumentos())
         )
 
@@ -513,7 +521,7 @@ class ConstructorAst private constructor(private val primerId: Int) : MokaBaseVi
         NuevoArreglo(
             id = nuevoId(),
             pos = pos(ctx),
-            tipoElemento = TipoAst(nuevoId(), pos(ctx.tipoBase()), textoUnico(ctx.tipoBase()), esArreglo = false),
+            tipoElemento = TipoAst(nuevoId(), pos(ctx.tipoBase()), nombreTipoDe(ctx.tipoBase()), esArreglo = false),
             tamano = exprDe(ctx.expresion())
         )
 
