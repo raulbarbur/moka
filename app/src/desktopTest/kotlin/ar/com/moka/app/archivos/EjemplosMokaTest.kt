@@ -97,4 +97,33 @@ class EjemplosMokaTest {
             corre("consola.moka")
         )
     }
+
+    // ---- buscaminas.moka --------------------------------------------
+    // Con la semilla 3 la primera partida es siempre la misma: hay una
+    // mina en (fila 4, columna 4). Las entradas son las del jugador; la
+    // linea vacia es el ENTER de "Presione ENTER para continuar".
+
+    @Test
+    fun buscaminasPerdiendoEnUnaMina() {
+        val salida = corre("buscaminas.moka", listOf("3", "1", "1", "4", "4", "", "0"))
+        assertTrue("Ha perdido." in salida, salida)
+        assertTrue("Programa finalizado." in salida, salida)
+    }
+
+    @Test
+    fun buscaminasAbandonandoYConEnterVacioComoSemilla() {
+        // ENTER vacio en la semilla (usa la fija), 1 = jugar, 0 = abandonar,
+        // ENTER vacio para continuar y 0 = salir del programa.
+        val salida = corre("buscaminas.moka", listOf("", "1", "0", "", "0"))
+        assertTrue("Programa finalizado." in salida, salida)
+        assertTrue("Ha perdido." !in salida && "Ha ganado." !in salida, salida)
+    }
+
+    @Test
+    fun buscaminasNoSeRompeConEntradaInvalida() {
+        // "x" no es una cifra y la fila 9 esta fuera del tablero: solo avisan.
+        val salida = corre("buscaminas.moka", listOf("3", "1", "x", "1", "9", "1", "0", "0", "", "0"))
+        assertTrue("Posicion invalida." in salida, salida)
+        assertTrue("Programa finalizado." in salida, salida)
+    }
 }

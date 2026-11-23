@@ -1,6 +1,9 @@
 package ar.com.moka.app
 
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.res.loadImageBitmap
+import androidx.compose.ui.res.useResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import ar.com.moka.app.archivos.EstadoProyecto
@@ -15,7 +18,12 @@ fun main() = application {
     val controlador = remember { MokaControlador(proyecto.proveedor) }
     val sesionArchivo = remember { SesionArchivoMoka() }
 
+    // Icono de la ventana y de la barra de tareas: el PNG vive en
+    // app/src/desktopMain/resources/moka-icono.png (se empaqueta en el jar).
+    val icono = remember { BitmapPainter(useResource("moka-icono.png", ::loadImageBitmap)) }
+
     Window(
+        icon = icono,
         onCloseRequest = {
             // Si devuelve false, ya dejo marcada la confirmacion visible.
             if (sesionArchivo.pedirCierre(controlador.estado.value.fuente)) exitApplication()

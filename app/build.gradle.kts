@@ -45,8 +45,8 @@ android {
         applicationId = "ar.com.moka.app"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0-fase0"
+        versionCode = 2
+        versionName = "1.0"
     }
 
     buildTypes {
@@ -63,6 +63,11 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            packageName = "Moka"
+            packageVersion = "1.0.0"
+            windows { iconFile.set(project.file("icons/moka.ico")) }
+            linux { iconFile.set(project.file("icons/moka.png")) }
+            macOS { iconFile.set(project.file("icons/moka.icns")) }
         }
     }
 }

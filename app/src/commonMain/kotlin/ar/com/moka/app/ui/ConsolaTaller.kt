@@ -5,8 +5,12 @@
 //  acumulando de los eventos Salida; las de error en rojo), el aviso de
 //  cierre cuando el pipeline termina, y el campo de entrada que aparece
 //  SOLO cuando el programa pidio una linea (evento PidiendoEntrada):
-//  escribir y tocar Enviar llama a enviarEntrada() del controlador, que
-//  despierta la leerLinea() suspendida de la maquina.
+//  escribir y tocar Enviar (o apretar ENTER) llama a enviarEntrada() del
+//  controlador, que despierta la leerLinea() suspendida de la maquina.
+//  ENTER en escritorio y la tecla "Enviar" del teclado en Android usan
+//  el MISMO camino (la accion de teclado onSend), asi que nunca se envia
+//  dos veces. Una linea vacia tambien se envia: hay programas (como el
+//  Buscaminas) que piden "Presione ENTER para continuar".
 //
 //  El scroll baja solo al agregarse lineas, para seguir la salida en
 //  tiempo real.
@@ -14,6 +18,8 @@
 package ar.com.moka.app.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +41,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -124,6 +133,12 @@ fun ConsolaTaller(
 
             if (pidiendoEntrada) {
                 var linea by remember { mutableStateOf("") }
+                // El campo toma el foco solo al aparecer: se puede seguir
+                // jugando o respondiendo sin volver a hacer clic en el.
+                val foco = remember { FocusRequester() }
+                LaunchedEffect(Unit) { foco.requestFocus() }
+                // Un unico punto de envio para ENTER y para el boton.
+                val enviar = { onEnviar(linea); linea = "" }
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -133,10 +148,14 @@ fun ConsolaTaller(
                         onValueChange = { linea = it },
                         singleLine = true,
                         label = { Text("Entrada del programa") },
-                        modifier = Modifier.weight(1f)
+                        // ImeAction.Send: ENTER en escritorio y el boton
+                        // "Enviar" del teclado en Android disparan onSend.
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { enviar() }),
+                        modifier = Modifier.weight(1f).focusRequester(foco)
                     )
                     Spacer(Modifier.width(8.dp))
-                    Button(onClick = { onEnviar(linea); linea = "" }) { Text("Enviar") }
+                    Button(onClick = enviar) { Text("Enviar") }
                 }
             }
         }

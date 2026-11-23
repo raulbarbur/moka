@@ -32,7 +32,7 @@ class ArchivosMokaTest {
         assertEquals(
             listOf(
                 "hola.moka", "bucles.moka", "funciones.moka", "arreglos.moka",
-                "segun.moka", "clases.moka", "entrada.moka", "fizzbuzz.moka", "consola.moka"
+                "segun.moka", "clases.moka", "entrada.moka", "fizzbuzz.moka", "consola.moka", "buscaminas.moka"
             ),
             EjemplosMoka.todos.map { it.nombre }
         )

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Gris carbon del icono (mismo tono oscuro del tema). -->
+    <color name="ic_launcher_background">#2B2D30</color>
+</resources>
