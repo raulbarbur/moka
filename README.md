@@ -1,75 +1,107 @@
 # Moka
 
-Interprete de un lenguaje didactico con sintaxis en espanol, con GUI que
-visualiza cada fase de compilacion (lexico, sintactico, semantico, TAC,
-ejecucion). Kotlin Multiplatform + Compose Multiplatform + ANTLR (target
-Kotlin de Strumenta). Ver el documento de diseno (v2) para el detalle.
+Interprete de un lenguaje didactico con sintaxis en espanol, escrito en
+Kotlin Multiplatform. Incluye:
 
-**Estado actual: Fase 0** - scaffold del proyecto y spike de compatibilidad
-de versiones. El nucleo parsea un subconjunto minimo de la gramatica
-(`Moka.g4`) y la app muestra una ventana/pantalla que llama al nucleo.
+- **core**: el interprete completo (lexico, sintactico, semantico,
+  generacion de TAC y maquina de ejecucion), libreria multiplataforma.
+- **cli**: una CLI JVM para correr programas .moka desde la terminal.
+- **app**: la aplicacion con interfaz grafica (Compose Multiplatform)
+  para escritorio y Android, que muestra cada fase de la compilacion
+  con sus artefactos: tokens, arbol, semantica, TAC y ejecucion.
+
+La gramatica vive en `core/antlr/Moka.g4` y el codigo que ANTLR genera
+va a `core/build/` (paquete `ar.com.moka.core.generado`): no se edita
+ni se versiona.
+
+## Documentacion
+
+- `docs/LENGUAJE.md`: referencia completa del lenguaje Moka.
+- `docs/APLICACION.md`: guia de la app (taller, fases, tutoriales) y de la CLI.
+- `docs/DISTRIBUCION.md`: como generar el instalador de Windows y el APK firmado.
+- `docs/ROADMAP.md`: estado de cada parte (implementado, pendiente de comprobar, futuro).
+
+## Estado
+
+Version 1.0. El interprete y la app funcionan y estan en uso; el
+instalador de Windows (MSI), la carpeta ejecutable de escritorio y el
+APK firmado se generaron y probaron. Lo que queda pendiente y lo que
+queda para versiones futuras
+estan en `docs/ROADMAP.md`.
 
 ## Requisitos
 
-- **JDK 17 o superior** (probado con JDK 21).
-- Para los targets Android: **Android SDK** con la plataforma 36 (desde
-  Android Studio se instala solo; Gradle la pide si falta).
-- No hace falta instalar Gradle: usa el *wrapper* incluido (`./gradlew`).
-
-## Versiones (Fase 0)
-
-| Componente | Version | Fuente |
-|---|---|---|
-| Kotlin | 2.4.20 | Maven Central; es la version con la que se construye antlr-kotlin 1.0.14 |
-| Compose Multiplatform | 1.11.1 | Maven Central (estable; la 1.12.x exige compileSdk 37, hoy solo en plataforma beta) |
-| Android Gradle Plugin | 9.5.1 | Maven de Google (ultima estable) |
-| antlr-kotlin (plugin + runtime) | 1.0.14 | Gradle Plugin Portal / Maven Central |
-| kotlinx-coroutines | 1.11.0 | Maven Central (ultima estable) |
-| Gradle (wrapper) | 9.9.1 | gradle.org |
-
-Regla del documento de diseno (seccion 6): Kotlin tiene que estar soportado
-por antlr-kotlin **y** por Compose a la vez; no actualizar ninguna version
-sin probar las otras.
+- JDK 17 o superior para compilar y correr los tests (probado con
+  JDK 21).
+- Para empaquetar (carpeta ejecutable o MSI): un JDK COMPLETO que
+  incluya `jpackage` (Eclipse Temurin 21 sirve). El Java que trae
+  Android Studio no lo incluye y el empaquetado falla.
+- Para Android: Android SDK con la plataforma 36 (Android Studio la instala).
+- Para generar el instalador MSI de Windows: no hace falta instalar WiX
+  a mano; el plugin de Compose lo descarga solo (tarea `downloadWix`).
+  Ver `docs/DISTRIBUCION.md`.
+- No hace falta instalar Gradle: se usa el wrapper incluido (`gradlew`).
 
 ## Como correr cada cosa
 
-```bash
-# Tests del nucleo (genera el lexer/parser con ANTLR antes de compilar)
-./gradlew :core:jvmTest
+```powershell
+# Tests del nucleo (196)
+.\gradlew :core:jvmTest
 
-# Todos los tests del nucleo en todos los targets
-./gradlew :core:allTests
+# Tests de la app en escritorio (79)
+.\gradlew :app:desktopTest
 
-# CLI: parsea un archivo .moka y muestra el resumen
-./gradlew :cli:run --args="ejemplos/hola.moka"
+# Compilar la variante Android
+.\gradlew :app:compileDebugKotlinAndroid
 
-# App de escritorio: abre la ventana
-./gradlew :app:run
+# App de escritorio
+.\gradlew :app:run
 
-# App Android: instala en el emulador o celular conectado
-./gradlew :app:installDebug
+# App Android en un telefono conectado o emulador
+.\gradlew :app:installDebug
 
-# Instalador nativo de escritorio (dmg/msi/deb segun el SO)
-./gradlew :app:packageDistributionForCurrentOS
+# CLI
+.\gradlew :cli:run --args="ejemplos/hola.moka"
 ```
+
+Ojo: `:core:test` NO corre los tests del nucleo (es un agregador que no
+ejecuta nada en este proyecto). La tarea real es `:core:jvmTest`.
 
 ## Estructura
 
 ```
 moka/
-├── core/    # Nucleo: libreria Kotlin Multiplatform (targets JVM + Android)
-│   ├── antlr/Moka.g4        # Gramatica (esqueleto de la Fase 0)
-│   └── src/commonMain/...   # Moka.kt: fachada minima (crece desde la Fase 1)
-├── cli/     # CLI JVM minima (crece en la Parte A del roadmap)
-├── app/     # Compose Multiplatform: escritorio (desktop) + Android
-└── ejemplos/                # Programas .moka de ejemplo
+├── core/    Nucleo del interprete (Kotlin Multiplatform: JVM + Android)
+│   ├── antlr/Moka.g4        Gramatica completa del lenguaje
+│   └── src/commonMain/...   lexico, sintactico, semantico, tac, ejecucion, pipeline
+├── cli/     CLI JVM
+├── app/     Compose Multiplatform: escritorio + Android
+├── docs/    Documentacion (esta carpeta)
+└── ejemplos/                Programas .moka de ejemplo (incluye buscaminas.moka)
 ```
 
-El codigo que ANTLR genera a partir de `Moka.g4` va a `core/build/` (paquete
-`ar.com.moka.core.generado`): **no se edita ni se versiona**.
+## Versiones
 
-## Proximos pasos
+| Componente | Version |
+|---|---|
+| Kotlin | 2.4.20 |
+| Compose Multiplatform | 1.11.1 |
+| Android Gradle Plugin | 9.5.1 |
+| antlr-kotlin (plugin + runtime) | 1.0.14 |
+| kotlinx-coroutines | 1.11.0 |
+| Gradle (wrapper) | 9.9.1 |
 
-Fase 1 (seccion 7 del documento): lexico completo, gramatica de expresiones,
-`imprimir`, AST minimo, semantico de variables, TAC de expresiones y la
-`MaquinaTac` con `Consola`, ya con la fachada `Moka.procesar(...)` por eventos.
+Regla: Kotlin tiene que estar soportado por antlr-kotlin y por Compose a
+la vez; no actualizar ninguna version sin probar las otras.
+
+Nota AGP 9: `gradle.properties` lleva `android.builtInKotlin=false` y
+`android.newDsl=false` para conservar el combo clasico
+com.android.application + Kotlin Multiplatform. Si Android Studio ofrece
+migrar al nuevo DSL o a Kotlin integrado, hay que RECHAZAR la oferta:
+rompe el build. Si ya se aplico por accidente, el sintoma es un error de
+Gradle del tipo "Cannot add extension with name 'kotlin'" (plugin
+`kotlin.android` agregado junto a Kotlin Multiplatform). Se arregla
+quitando solo lo que agrego la migracion en `app/build.gradle.kts` y
+`build.gradle.kts` (la linea del plugin `kotlinAndroid`, la dependencia
+`core-ktx` agregada y el `apply false` de la raiz) y comprobando con
+`git --no-pager diff` que no quedan cambios; el codigo no se toca.
