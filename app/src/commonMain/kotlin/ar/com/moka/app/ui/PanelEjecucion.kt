@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ar.com.moka.core.ejecucion.EventoEjecucion
 
-private val MONO_CHICO = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+private val MONO_CHICO = TextStyle(fontFamily = FuenteMono, fontSize = 12.sp)
 
 @Composable
 fun PanelEjecucion(
@@ -117,3 +117,4 @@ fun PanelEjecucion(
         }
     }
 }
+

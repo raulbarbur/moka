@@ -46,7 +46,7 @@ import ar.com.moka.core.lexico.CategoriaToken
 import ar.com.moka.core.lexico.Token
 import ar.com.moka.core.pipeline.Artefacto
 
-private val MONO_CHICO = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+private val MONO_CHICO = TextStyle(fontFamily = FuenteMono, fontSize = 12.sp)
 
 @Composable
 fun PanelTokens(
@@ -197,3 +197,4 @@ fun etiquetaDe(categoria: CategoriaToken): String = when (categoria) {
     CategoriaToken.DELIMITADOR -> "Delimitador"
     CategoriaToken.ERROR -> "Error"
 }
+

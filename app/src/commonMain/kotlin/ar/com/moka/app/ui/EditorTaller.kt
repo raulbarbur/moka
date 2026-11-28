@@ -190,7 +190,7 @@ fun EditorTaller(
     }
 
     val estiloCodigo = TextStyle(
-        fontFamily = FontFamily.Monospace,
+        fontFamily = FuenteMono,
         fontSize = tamanioFuente.sp,
         lineHeight = altoLinea,
         color = MaterialTheme.colorScheme.onSurface
@@ -413,3 +413,4 @@ private class PintadoEditor(
         return inicios[linea - 1] + columna
     }
 }
+

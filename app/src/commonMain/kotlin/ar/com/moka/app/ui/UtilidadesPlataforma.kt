@@ -24,6 +24,9 @@
 // =======================================================================
 package ar.com.moka.app.ui
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -33,6 +36,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.roundToInt
 
 // Ctrl + rueda: rueda hacia adelante agranda, hacia atras achica.
 // alZoom recibe +1 o -1; quien llama lo convierte en el tamano nuevo.
@@ -63,3 +67,43 @@ internal fun Modifier.zoomConRueda(alZoom: (Int) -> Unit): Modifier = composed {
 // y abajo (flecha de dos puntas vertical).
 internal expect fun cursorDivisorVertical(): PointerIcon
 internal expect fun cursorDivisorHorizontal(): PointerIcon
+
+
+// Pinza con dos dedos (7.13): separar los dedos agranda la letra, juntarlos
+// la achica, igual que en el arbol grafico.
+//
+// Como funciona:
+//   - Se mira el evento en el pase Initial (antes que los hijos). Con UN
+//     dedo no se toca nada: el scroll y el arrastre siguen como siempre.
+//   - Con DOS o mas dedos, calculateZoom() dice cuanto se separaron desde
+//     el evento anterior (1.0 = igual, 1.1 = 10% mas separados). Se
+//     multiplican en "acumulado" y el tamano nuevo es el de partida por
+//     ese acumulado (siempre desde el tamano que tenia al empezar el gesto,
+//     asi no se desvia).
+//   - Mientras hay pinza se consumen los cambios para que el panel no se
+//     desplace ni se mueva el cursor de texto.
+//   - alCambiar recibe el tamano NUEVO ya redondeado; quien llama lo acota
+//     (EstadoPaneles.fijarTamanio y alCambiarTamanio ya lo hacen).
+internal fun Modifier.zoomConPinza(tamanioActual: Int, alCambiar: (Int) -> Unit): Modifier = composed {
+    val tamanio = rememberUpdatedState(tamanioActual)
+    val cambiar = rememberUpdatedState(alCambiar)
+    pointerInput(Unit) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            val partida = tamanio.value.toFloat()
+            var acumulado = 1f
+            do {
+                val evento = awaitPointerEvent(PointerEventPass.Initial)
+                if (evento.changes.size >= 2) {
+                    val zoom = evento.calculateZoom()
+                    if (zoom != 1f) {
+                        acumulado *= zoom
+                        val nuevo = (partida * acumulado).roundToInt()
+                        if (nuevo != tamanio.value) cambiar.value(nuevo)
+                        evento.changes.forEach { it.consume() }
+                    }
+                }
+            } while (evento.changes.any { it.pressed })
+        }
+    }
+}

@@ -51,7 +51,7 @@ import ar.com.moka.core.semantico.SimboloClase
 import ar.com.moka.core.semantico.SimboloFuncion
 import ar.com.moka.core.semantico.SimboloVariable
 
-private val MONO_CHICO = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+private val MONO_CHICO = TextStyle(fontFamily = FuenteMono, fontSize = 12.sp)
 
 @Composable
 fun PanelSemantico(
@@ -248,3 +248,4 @@ private fun SubPanelErrores(
         }
     }
 }
+

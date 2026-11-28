@@ -54,7 +54,7 @@ import ar.com.moka.core.tac.Operacion
 import ar.com.moka.core.tac.Operando
 import ar.com.moka.core.tac.ProgramaTac
 
-private val MONO_CHICO = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+private val MONO_CHICO = TextStyle(fontFamily = FuenteMono, fontSize = 12.sp)
 
 @Composable
 fun PanelTac(
@@ -169,3 +169,4 @@ private fun resultadoDe(programa: ProgramaTac, c: Cuadrupla): String {
     val destino = (c.resultado as? Operando.Etiqueta)?.let { programa.etiquetas[it.nombre] }
     return if (destino != null) "$texto \u2192 $destino" else texto
 }
+

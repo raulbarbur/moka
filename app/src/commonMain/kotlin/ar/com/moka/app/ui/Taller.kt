@@ -228,10 +228,14 @@ private const val FRACCION_MAXIMA = 0.94f
 // items A+/A- del menu Editar.
 private fun Modifier.zoomEditor(tamanioFuente: Int, alCambiarTamanio: (Int) -> Unit): Modifier =
     zoomConRueda { delta -> alCambiarTamanio(tamanioFuente + delta) }
+        // Pinza con dos dedos (celular): mismo tamano, mismo limite.
+        .zoomConPinza(tamanioFuente) { nuevo -> alCambiarTamanio(nuevo) }
 
 // Zoom de un panel con Ctrl + rueda: cambia solo ESE panel (5C).
 private fun Modifier.zoomPanel(paneles: EstadoPaneles, panel: String): Modifier =
     zoomConRueda { delta -> paneles.cambiarTamanio(panel, delta) }
+        // Pinza con dos dedos: fijarTamanio ya acota entre minimo y maximo.
+        .zoomConPinza(paneles.tamanio(panel)) { nuevo -> paneles.fijarTamanio(panel, nuevo) }
 
 // Layout de escritorio: codigo | paneles arriba, consola | problemas
 // abajo (5A: la consola va a la IZQUIERDA y los problemas a la derecha),
@@ -373,7 +377,9 @@ private fun ContenidoSimple(
             )
             if (hayConsola) {
                 DivisorHorizontal { delta ->
-                    fraccionCodigo = (fraccionCodigo + delta / altoPx).coerceIn(0.25f, FRACCION_MAXIMA)
+                    // 7.13: antes el minimo era 0.25f; ahora la consola puede subir casi hasta
+                    // arriba (el editor queda reducido a una franja para volver a bajar).
+                    fraccionCodigo = (fraccionCodigo + delta / altoPx).coerceIn(FRACCION_MINIMA, FRACCION_MAXIMA)
                 }
                 ConsolaTaller(
                     salida = estado.salida,
@@ -499,3 +505,4 @@ private fun rememberSeleccionar(controlador: MokaControlador): (Posicion?) -> Un
         }
     }
 }
+

@@ -126,7 +126,7 @@ fun ConsolaTaller(
                 }
                 Text(
                     texto,
-                    style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = tamanio.sp),
+                    style = TextStyle(fontFamily = FuenteMono, fontSize = tamanio.sp),
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -161,3 +161,4 @@ fun ConsolaTaller(
         }
     }
 }
+

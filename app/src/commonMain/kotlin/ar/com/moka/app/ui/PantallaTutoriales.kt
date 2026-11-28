@@ -13,6 +13,12 @@
 // =======================================================================
 package ar.com.moka.app.ui
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import kotlin.math.roundToInt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -74,7 +80,20 @@ fun PantallaTutoriales(
                 TextButton(onClick = alCerrar) { Text("Volver al editor") }
             }
             HorizontalDivider()
-            BoxWithConstraints(Modifier.fillMaxSize()) {
+            // 7.13: pinza con dos dedos tambien aca. La pantalla no tiene un
+            // tamano de letra propio, asi que se escala el "fontScale" de
+            // todo su contenido (en porcentaje: 100 = normal).
+            var escala by remember { mutableFloatStateOf(1f) }
+            val densidad = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(densidad.density, densidad.fontScale * escala)
+            ) {
+            BoxWithConstraints(
+                Modifier.fillMaxSize()
+                    .zoomConPinza((escala * 100).roundToInt()) { nuevo ->
+                        escala = (nuevo / 100f).coerceIn(0.7f, 2.5f)
+                    }
+            ) {
                 if (maxWidth >= ANCHO_DOS_COLUMNAS) {
                     val actual = indice.coerceAtLeast(0)
                     Row(Modifier.fillMaxSize()) {
@@ -95,6 +114,7 @@ fun PantallaTutoriales(
                     )
                 }
             }
+            } // CompositionLocalProvider
         }
     }
 }
@@ -193,7 +213,7 @@ private fun BloqueCodigo(texto: String) {
         SelectionContainer {
             Text(
                 texto.trimEnd(),
-                fontFamily = FontFamily.Monospace,
+                fontFamily = FuenteMono,
                 fontWeight = FontWeight.Normal,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(12.dp)
@@ -201,3 +221,4 @@ private fun BloqueCodigo(texto: String) {
         }
     }
 }
+

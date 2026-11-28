@@ -67,7 +67,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-private val ESTILO_NODO = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+private val ESTILO_NODO = TextStyle(fontFamily = FuenteMono, fontSize = 12.sp)
 private const val ESPACIO_ENTRE_HERMANOS = 24f
 private const val ESPACIO_ENTRE_NIVELES = 44f
 private const val MARGEN_ARBOL = 28f
@@ -386,3 +386,4 @@ private fun DrawScope.dibujarNodos(
         )
     }
 }
+

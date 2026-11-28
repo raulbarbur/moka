@@ -83,6 +83,8 @@ fun PanelesTaller(
                 // esta viendo (el de la pestaña activa), no el de todos.
                 modifier = Modifier.fillMaxSize()
                     .zoomConRueda { delta -> paneles.cambiarTamanio(idActivo, delta) }
+                    // Pinza con dos dedos: lo mismo que la rueda, para el celular.
+                    .zoomConPinza(paneles.tamanio(idActivo)) { nuevo -> paneles.fijarTamanio(idActivo, nuevo) }
             )
         }
     }
@@ -152,3 +154,4 @@ fun PanelVacio(mensaje: String, modifier: Modifier = Modifier) {
         Text(mensaje, style = MaterialTheme.typography.bodyMedium)
     }
 }
+

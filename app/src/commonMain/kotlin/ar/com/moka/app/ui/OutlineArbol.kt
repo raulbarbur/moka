@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ar.com.moka.core.ast.Posicion
 
-private val MONO_CHICO = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+private val MONO_CHICO = TextStyle(fontFamily = FuenteMono, fontSize = 12.sp)
 
 // Un arbol de hasta este tamaño arranca todo abierto; mas grande, solo
 // la raiz (un programa mediano tiene miles de nodos de parseo).
@@ -159,3 +159,4 @@ private fun recolectarClaves(nodos: List<ElementoVista>, prefijo: String, salida
         }
     }
 }
+
