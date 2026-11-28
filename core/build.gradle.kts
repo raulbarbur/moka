@@ -30,6 +30,11 @@ val generateKotlinGrammarSource = tasks.register<AntlrKotlinTask>("generateKotli
 kotlin {
     jvm()
     androidTarget()
+    // Fase 0 del playground web: el core compila a JavaScript (IR).
+    js {
+        browser()
+        nodejs()
+    }
 
     sourceSets {
         commonMain {

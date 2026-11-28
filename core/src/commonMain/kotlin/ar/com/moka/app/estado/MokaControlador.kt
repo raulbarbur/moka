@@ -103,10 +103,12 @@ class MokaControlador(
     // todo en celular, donde no hay Ctrl+Z comodo.
     private val deshacerPila = ArrayDeque<String>()
     private val rehacerPila = ArrayDeque<String>()
+    // Reloj multiplataforma (System.currentTimeMillis no existe en JS).
+    private val reloj = kotlin.time.TimeSource.Monotonic.markNow()
     private var ultimaEdicion = 0L
 
     private fun registrarDeshacer(anterior: String) {
-        val ahora = System.currentTimeMillis()
+        val ahora = reloj.elapsedNow().inWholeMilliseconds
         if (deshacerPila.isEmpty() || ahora - ultimaEdicion > 700) {
             deshacerPila.addLast(anterior)
             if (deshacerPila.size > 200) deshacerPila.removeFirst()
@@ -263,3 +265,4 @@ class MokaControlador(
         }
     }
 }
+

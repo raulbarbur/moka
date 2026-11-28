@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "moka"
 
-include(":core", ":cli", ":app")
+include(":core", ":cli", ":app", ":web")

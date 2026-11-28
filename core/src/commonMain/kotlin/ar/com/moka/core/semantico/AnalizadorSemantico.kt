@@ -779,7 +779,7 @@ class AnalizadorSemantico {
 
     // "x", despues "x#2", "x#3"... Distingue sombreados en TAC y GUI.
     private fun idUnico(nombre: String): String {
-        val visto = contadorPorNombre.getOrDefault(nombre, 0) + 1
+        val visto = (contadorPorNombre[nombre] ?: 0) + 1
         contadorPorNombre[nombre] = visto
         return if (visto == 1) nombre else "$nombre#$visto"
     }
@@ -808,3 +808,4 @@ class AnalizadorSemantico {
         for (hijo in amb.hijos) advertirVariablesSinUso(hijo)
     }
 }
+
